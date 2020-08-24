@@ -1,4 +1,5 @@
 var BB = require('../bin/ByteBuffer');
+var Defines = require('../bin/Defines');
 var assert = require('assert');
 
 var versionInfo = 'NETCODE 1.01\x00';
@@ -6,9 +7,7 @@ var versionInfo = 'NETCODE 1.01\x00';
 describe('ByteBuffer tests', function () {
   it('correct write/read bytes', function () {
     var bb = new BB.ByteBuffer(new Uint8Array(64));
-    var enc = new TextEncoder();
-    var bytes = enc.encode(versionInfo);
-    var input = new Uint8Array(bytes);
+    var input = new Uint8Array(Defines.VERSION_INFO_BYTES_ARRAY);
     assert.equal(bb.position, 0, 'oh no');
     bb.writeBytes(input);
     assert.equal(bb.position, 13, 'oh no');
@@ -16,9 +15,11 @@ describe('ByteBuffer tests', function () {
     bb.clearPosition();
     assert.equal(bb.position, 0, 'oh no');
     var output = bb.readBytes(13);
-    var dec = new TextDecoder('utf-8');
-    var str = dec.decode(output.buffer);
-    assert.equal(str, versionInfo, 'oh no');
+    output.forEach(function (item, index) {
+      if (Defines.VERSION_INFO_BYTES_ARRAY[index] !== item) {
+        assert(false, 'oh no');
+      }
+    });
     assert.equal(bb.position, 13, 'oh no');
   });
 

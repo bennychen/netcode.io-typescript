@@ -1,5 +1,6 @@
 var CT = require('../bin/ConnectToken');
 var BB = require('../bin/ByteBuffer');
+var { Utils } = require('../bin/Utils');
 var Defines = require('../bin/Defines');
 var chacha = require('../bin/chacha20poly1305');
 var assert = require('assert');
@@ -77,9 +78,9 @@ function ipStringToBytes(ip) {
 
 describe('ShareConnectToken tests', function () {
   it('read/write shared connect token', function () {
-    var clientKey = Defines.generateKey();
+    var clientKey = Utils.generateKey();
     assert.equal(clientKey.length, Defines.KEY_BYTES, 'oh no');
-    var serverKey = Defines.generateKey();
+    var serverKey = Utils.generateKey();
     assert.equal(serverKey.length, Defines.KEY_BYTES, 'oh no');
 
     var addr = {
@@ -174,7 +175,7 @@ describe('ShareConnectToken tests', function () {
     );
 
     const buffer = new Uint8Array(Defines.CONNECT_TOKEN_PRIVATE_BYTES);
-    Defines.blockCopy(token2.buffer, 0, buffer, 0, token2.buffer.length);
+    Utils.blockCopy(token2.buffer, 0, buffer, 0, token2.buffer.length);
     token2.tokenData = new BB.ByteBuffer(buffer);
     token2.write();
     var ret = token2.encrypt(

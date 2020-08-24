@@ -1,5 +1,3 @@
-import { getRandomBytes } from './chacha20poly1305';
-
 export const CONNECT_TOKEN_PRIVATE_BYTES = 1024;
 export const CHALLENGE_TOKEN_BYTES = 300;
 export const VERSION_INFO_BYTES = 13;
@@ -32,27 +30,3 @@ export const VERSION_INFO_BYTES_ARRAY = new Uint8Array([
 ]);
 
 export const CONNECT_TOKEN_BYTES = 2048;
-
-export function generateKey(): Uint8Array {
-  return getRandomBytes(KEY_BYTES);
-}
-
-export function blockCopy(
-  src: Uint8Array,
-  srcOffset: number,
-  dst: Uint8Array,
-  dstOffset: number,
-  count: number
-) {
-  if (
-    dstOffset + count < 0 ||
-    dstOffset + count > dst.length ||
-    srcOffset + count < 0 ||
-    srcOffset + count > src.length
-  ) {
-    throw new Error('blockCopy::array out of bounds');
-  }
-  for (let i = 0; i < count; i++) {
-    dst[dstOffset + i] = src[srcOffset + i];
-  }
-}

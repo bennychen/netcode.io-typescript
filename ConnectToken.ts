@@ -1,5 +1,6 @@
 import * as Defines from './Defines';
-import * as BB from './ByteBuffer';
+import { Utils } from './Utils';
+import { Long, ByteBuffer } from './ByteBuffer';
 import * as chacha from './chacha20poly1305';
 
 export enum AddressType {
@@ -23,11 +24,11 @@ export class SharedTokenData {
   serverKey: Uint8Array;
 
   public generate() {
-    this.clientKey = Defines.generateKey();
-    this.serverKey = Defines.generateKey();
+    this.clientKey = Utils.generateKey();
+    this.serverKey = Utils.generateKey();
   }
 
-  public read(buffer: BB.ByteBuffer): boolean {
+  public read(buffer: ByteBuffer): boolean {
     this.timeoutSeconds = buffer.readInt32();
     if (this.timeoutSeconds === undefined) {
       return;
@@ -94,7 +95,7 @@ export class SharedTokenData {
     return true;
   }
 
-  public write(buffer: BB.ByteBuffer) {
+  public write(buffer: ByteBuffer) {
     buffer.writeInt32(this.timeoutSeconds);
     buffer.writeUint32(this.serverAddrs.length);
 
@@ -122,26 +123,26 @@ export class SharedTokenData {
 // The private parts of a connect token
 export class ConnectTokenPrivate {
   sharedTokenData: SharedTokenData;
-  clientId: BB.Long;
+  clientId: Long;
   userData: Uint8Array;
   mac: Uint8Array;
-  tokenData: BB.ByteBuffer;
+  tokenData: ByteBuffer;
 
   public static createEncrypted(buffer: Uint8Array): ConnectTokenPrivate {
     const p = new ConnectTokenPrivate();
     p.mac = new Uint8Array(Defines.MAC_BYTES);
-    p.tokenData = new BB.ByteBuffer(buffer);
+    p.tokenData = new ByteBuffer(buffer);
     return p;
   }
 
   public static create(
-    clientID: BB.Long,
+    clientID: Long,
     timeoutSeconds: number,
     serverAddrs: IUDPAddr[],
     userData: Uint8Array
   ): ConnectTokenPrivate {
     const p = new ConnectTokenPrivate();
-    p.tokenData = new BB.ByteBuffer(
+    p.tokenData = new ByteBuffer(
       new Uint8Array(Defines.CONNECT_TOKEN_PRIVATE_BYTES)
     );
     p.clientId = clientID;
@@ -151,6 +152,31 @@ export class ConnectTokenPrivate {
     p.mac = new Uint8Array(Defines.MAC_BYTES);
     return p;
   }
+
+  public static buildTokenCryptData(
+    protocolID: Long,
+    expireTimestamp: Long,
+    sequence: Long
+  ): { additionalData: ByteBuffer; nonce: ByteBuffer } {
+    this._sharedAdditionalBytes.clearPosition();
+    this._sharedAdditionalBytes.writeBytes(Defines.VERSION_INFO_BYTES_ARRAY);
+    this._sharedAdditionalBytes.writeUint64(protocolID);
+    this._sharedAdditionalBytes.writeUint64(expireTimestamp);
+
+    this._sharedNonce.clearPosition();
+    this._sharedNonce.writeUint32(0);
+    this._sharedNonce.writeUint64(sequence);
+    return {
+      additionalData: this._sharedAdditionalBytes,
+      nonce: this._sharedNonce,
+    };
+  }
+  private static _sharedAdditionalBytes: ByteBuffer = new ByteBuffer(
+    new Uint8Array(Defines.VERSION_INFO_BYTES + 8 + 8)
+  );
+  private static _sharedNonce: ByteBuffer = new ByteBuffer(
+    new Uint8Array(8 + 4)
+  );
 
   public constructor() {
     this.sharedTokenData = new SharedTokenData();
@@ -190,12 +216,12 @@ export class ConnectTokenPrivate {
   }
 
   public encrypt(
-    protocolID: BB.Long,
-    expireTimestamp: BB.Long,
-    sequence: BB.Long,
+    protocolID: Long,
+    expireTimestamp: Long,
+    sequence: Long,
     privateKey: Uint8Array
   ): boolean {
-    const { additionalData, nonce } = this.buildTokenCryptData(
+    const { additionalData, nonce } = ConnectTokenPrivate.buildTokenCryptData(
       protocolID,
       expireTimestamp,
       sequence
@@ -221,14 +247,14 @@ export class ConnectTokenPrivate {
       );
       return false;
     }
-    Defines.blockCopy(
+    Utils.blockCopy(
       encrypted[0],
       0,
       this.tokenData.bytes,
       0,
       encrypted[0].length
     );
-    Defines.blockCopy(
+    Utils.blockCopy(
       encrypted[1],
       0,
       this.tokenData.bytes,
@@ -240,23 +266,23 @@ export class ConnectTokenPrivate {
   }
 
   public decrypt(
-    protocolID: BB.Long,
-    expireTimestamp: BB.Long,
-    sequence: BB.Long,
+    protocolID: Long,
+    expireTimestamp: Long,
+    sequence: Long,
     privateKey: Uint8Array
   ): Uint8Array {
     if (this.tokenData.bytes.length !== Defines.CONNECT_TOKEN_PRIVATE_BYTES) {
       console.error('wrong token data length');
       return;
     }
-    Defines.blockCopy(
+    Utils.blockCopy(
       this.tokenData.bytes,
       Defines.CONNECT_TOKEN_PRIVATE_BYTES - Defines.MAC_BYTES,
       this.mac,
       0,
       Defines.MAC_BYTES
     );
-    const { additionalData, nonce } = this.buildTokenCryptData(
+    const { additionalData, nonce } = ConnectTokenPrivate.buildTokenCryptData(
       protocolID,
       expireTimestamp,
       sequence
@@ -272,30 +298,12 @@ export class ConnectTokenPrivate {
       this.mac
     );
     if (decrypted) {
-      this.tokenData = new BB.ByteBuffer(decrypted);
+      this.tokenData = new ByteBuffer(decrypted);
     } else {
       return;
     }
     this.tokenData.clearPosition();
     return this.tokenData.bytes;
-  }
-
-  private buildTokenCryptData(
-    protocolID: BB.Long,
-    expireTimestamp: BB.Long,
-    sequence: BB.Long
-  ): { additionalData: BB.ByteBuffer; nonce: BB.ByteBuffer } {
-    const additionalData = new BB.ByteBuffer(
-      new Uint8Array(Defines.VERSION_INFO_BYTES + 8 + 8)
-    );
-    additionalData.writeBytes(Defines.VERSION_INFO_BYTES_ARRAY);
-    additionalData.writeUint64(protocolID);
-    additionalData.writeUint64(expireTimestamp);
-
-    const nonce = new BB.ByteBuffer(new Uint8Array(8 + 4));
-    nonce.writeUint32(0);
-    nonce.writeUint64(sequence);
-    return { additionalData, nonce };
   }
 }
 
