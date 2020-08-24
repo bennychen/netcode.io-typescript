@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "composite": true,
+    "declaration": true,
+    "target": "es6",
+    "experimentalDecorators": true,
+    "sourceMap": true,
+    "rootDir": "./",
+    // "outFile": "./bin/networkio.js",
+    "outDir": "./bin",
+    "removeComments": true
+  },
+  "exclude": ["./bin"]
+}
