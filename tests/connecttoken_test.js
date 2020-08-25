@@ -77,7 +77,7 @@ describe('ShareConnectToken tests', function () {
 
     var addr = {
       ip: ipStringToBytes('10.20.30.40'),
-      port: 40000,
+      port: TEST_SERVER_PORT,
     };
     var data = new CT.SharedTokenData();
     data.timeoutSeconds = 10;
@@ -103,7 +103,7 @@ describe('ShareConnectToken tests', function () {
   it('read/write private connect token', function () {
     var addr = {
       ip: ipStringToBytes('10.20.30.40'),
-      port: 40000,
+      port: TEST_SERVER_PORT,
     };
     var ts = Date.now();
     var expireTs = ts + TEST_CONNECT_TOKEN_EXPIRY;
@@ -184,7 +184,7 @@ describe('ShareConnectToken tests', function () {
   it('read/write connect token', function () {
     var addr = {
       ip: ipStringToBytes('10.20.30.40'),
-      port: 40000,
+      port: TEST_SERVER_PORT,
     };
     var key = Utils.generateKey();
     var userData = Utils.getRandomBytes(Defines.USER_DATA_BYTES);

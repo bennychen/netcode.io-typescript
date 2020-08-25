@@ -4,14 +4,12 @@ import { REPLAY_PROTECTION_BUFFER_SIZE } from './Defines';
 export class ReplayProtection {
   public constructor() {
     this._receivedPacket = new Array(REPLAY_PROTECTION_BUFFER_SIZE);
-  }
-  public reset() {
-    this._mostRecentSequence = 0;
-    this.clearPacketBuffer(this._receivedPacket);
+    this.reset();
   }
 
-  public clearPacketBuffer(packets: Array<number>) {
-    packets.fill(0xffffffffffffffff);
+  public reset() {
+    this._mostRecentSequence = 0;
+    this._receivedPacket.fill(0xffffffffffffffff);
   }
 
   public checkAlreadyReceived(sequence: number): boolean {
