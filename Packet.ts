@@ -1,6 +1,8 @@
 import * as Defines from './Defines';
 import { ByteBuffer, Long } from './ByteBuffer';
 import { ConnectTokenPrivate } from './ConnectToken';
+import { PacketError } from './Errors';
+import { Utils } from './Utils';
 
 enum PacketType {
   ConnectionRequest,
@@ -12,23 +14,6 @@ enum PacketType {
   ConnectionDisconnect,
 
   ConnectionNumPackets,
-}
-
-enum PacketError {
-  none,
-  EOF,
-
-  invalidPacket,
-
-  requestPacketTypeNotAllowed,
-  requestBadPacketLength,
-  requestPacketNoPrivateKey,
-  reqeustPacketBadVersionInfoBytes,
-  reqeustPacketBadVersionInfo,
-  reqeustPacketBadProtocolID,
-  reqeustPacketConnectTokenExpired,
-  reqeustPacketInvalidLength,
-  reqeustPacketDecryptPrivateTokenData,
 }
 
 function peekPacketType(packetBuffer: Uint8Array): PacketType {
@@ -51,10 +36,10 @@ interface IReadParams {
 }
 
 interface IPacket {
-  GetType(): PacketType;
-  Sequence(): number;
-  Write(buf: Uint8Array, sequence: number, writePacketKey: Uint8Array): number;
-  Read(
+  getType(): PacketType;
+  sequence(): number;
+  write(buf: Uint8Array, sequence: number, writePacketKey: Uint8Array): number;
+  read(
     packetData: Uint8Array,
     packetLen: number,
     readParams: IReadParams
@@ -74,15 +59,29 @@ class PacketFactory {
 }
 
 class RequestPacket implements IPacket {
-  public GetType(): PacketType {
+  public getType(): PacketType {
     return PacketType.ConnectionRequest;
   }
 
-  public Sequence(): number {
+  public sequence(): number {
     return 0;
   }
 
-  public Write(
+  public setProperties(
+    versionInfo: Uint8Array,
+    protocolID: Long,
+    expireTimeStamp: Long,
+    sequence: Long,
+    connectTokenData: Uint8Array
+  ) {
+    this._versionInfo = versionInfo;
+    this._protocolID = protocolID;
+    this._connectTokenExpireTimestamp = expireTimeStamp;
+    this._connectTokenSequence = sequence;
+    this._connectTokenData = connectTokenData;
+  }
+
+  public write(
     buf: Uint8Array,
     sequence: number,
     writePacketKey: Uint8Array
@@ -103,7 +102,7 @@ class RequestPacket implements IPacket {
     return bb.position;
   }
 
-  public Read(
+  public read(
     packetData: Uint8Array,
     packetLen: number,
     readParams: IReadParams
@@ -117,7 +116,7 @@ class RequestPacket implements IPacket {
       return PacketError.invalidPacket;
     }
     if (readParams.allowedPackets[0] === 0) {
-      return PacketError.requestPacketTypeNotAllowed;
+      return PacketError.packetTypeNotAllowed;
     }
     if (
       packetLen !==
@@ -128,18 +127,18 @@ class RequestPacket implements IPacket {
         8 +
         Defines.CONNECT_TOKEN_PRIVATE_BYTES
     ) {
-      return PacketError.requestBadPacketLength;
+      return PacketError.badPacketLength;
     }
     if (!readParams.privateKey) {
-      return PacketError.requestPacketNoPrivateKey;
+      return PacketError.noPrivateKey;
     }
 
     this._versionInfo = bb.readBytes(Defines.VERSION_INFO_BYTES);
-    if (this._versionInfo === undefined) {
-      return PacketError.reqeustPacketBadVersionInfoBytes;
-    }
-    if (this._versionInfo.toString() !== Defines.VERSION_INFO) {
-      return PacketError.reqeustPacketBadVersionInfo;
+    if (
+      this._versionInfo === undefined ||
+      !Utils.arrayEqual(this._versionInfo, Defines.VERSION_INFO_BYTES_ARRAY)
+    ) {
+      return PacketError.badVersionInfo;
     }
 
     this._protocolID = bb.readUint64();
@@ -147,7 +146,7 @@ class RequestPacket implements IPacket {
       this._protocolID === undefined ||
       !this._protocolID.equals(readParams.protocolId)
     ) {
-      return PacketError.reqeustPacketBadProtocolID;
+      return PacketError.badProtocolID;
     }
 
     this._connectTokenExpireTimestamp = bb.readUint64();
@@ -156,7 +155,7 @@ class RequestPacket implements IPacket {
       this._connectTokenExpireTimestamp.toNumber() <=
         readParams.currentTimestamp
     ) {
-      return PacketError.reqeustPacketConnectTokenExpired;
+      return PacketError.connectTokenExpired;
     }
 
     this._connectTokenSequence = bb.readUint64();
@@ -165,7 +164,7 @@ class RequestPacket implements IPacket {
     }
 
     if (bb.position !== 1 + Defines.VERSION_INFO_BYTES + 8 + 8 + 8) {
-      return PacketError.reqeustPacketInvalidLength;
+      return PacketError.packetInvalidLength;
     }
 
     const tokenBuffer = bb.readBytes(Defines.CONNECT_TOKEN_PRIVATE_BYTES);
@@ -182,11 +181,11 @@ class RequestPacket implements IPacket {
         readParams.privateKey
       )
     ) {
-      return PacketError.reqeustPacketDecryptPrivateTokenData;
+      return PacketError.decryptPrivateTokenData;
     }
 
     if (!this._token.read()) {
-      return PacketError.reqeustPacketDecryptPrivateTokenData;
+      return PacketError.decryptPrivateTokenData;
     }
 
     return PacketError.none;

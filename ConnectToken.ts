@@ -1,5 +1,6 @@
 import * as Defines from './Defines';
 import { Utils } from './Utils';
+import { PacketError } from './Errors';
 import { Long, ByteBuffer } from './ByteBuffer';
 import * as chacha from './chacha20poly1305';
 
@@ -15,18 +16,6 @@ export interface IUDPAddr {
   isIPV6?: boolean;
 }
 
-export enum ConnectTokenError {
-  none,
-  badVersionInfo,
-  badProtocolID,
-  badCreateTimestamp,
-  badExpireTimestamp,
-  expiredTokenTimestamp,
-  badSequence,
-  badPrivateData,
-  EOF,
-}
-
 // This struct contains data that is shared in both public and private parts of the
 // connect token.
 export class SharedTokenData {
@@ -40,10 +29,10 @@ export class SharedTokenData {
     this.serverKey = Utils.generateKey();
   }
 
-  public read(buffer: ByteBuffer): boolean {
+  public read(buffer: ByteBuffer): PacketError {
     this.timeoutSeconds = buffer.readInt32();
     if (this.timeoutSeconds === undefined) {
-      return;
+      return PacketError.EOF;
     }
     const servers = buffer.readUint32();
     if (
@@ -51,14 +40,20 @@ export class SharedTokenData {
       servers <= 0 ||
       servers > Defines.MAX_SERVERS_PER_CONNECT
     ) {
-      return false;
+      return PacketError.EOF;
+    }
+    if (servers <= 0) {
+      return PacketError.emptyServer;
+    }
+    if (servers > Defines.MAX_SERVERS_PER_CONNECT) {
+      return PacketError.tooManyServers;
     }
 
     this.serverAddrs = [];
     for (let i = 0; i < servers; i++) {
       const serverType = buffer.readUint8();
       if (serverType === undefined) {
-        return false;
+        return PacketError.EOF;
       }
 
       let ipBytes: Uint8Array;
@@ -66,14 +61,14 @@ export class SharedTokenData {
       if (serverType === AddressType.ADDRESS_IPV4) {
         ipBytes = buffer.readBytes(4);
         if (ipBytes === undefined) {
-          return false;
+          return PacketError.EOF;
         }
       } else if (serverType === AddressType.ADDRESS_IPV6) {
         ipBytes = new Uint8Array(16);
         for (let j = 0; j < 16; j += 2) {
           const n = buffer.readUint16();
           if (n === undefined) {
-            return false;
+            return PacketError.EOF;
           }
           // decode little endian -> big endian
           ipBytes[j] = 0xff & (n >> 8);
@@ -81,11 +76,11 @@ export class SharedTokenData {
         }
         isIPV6 = true;
       } else {
-        return false;
+        return PacketError.unknownIPAddressType;
       }
       const port = buffer.readUint16();
       if (port === undefined) {
-        return false;
+        return PacketError.invalidPort;
       }
       this.serverAddrs[i] = {
         ip: ipBytes,
@@ -96,15 +91,15 @@ export class SharedTokenData {
 
     this.clientKey = buffer.readBytes(Defines.KEY_BYTES);
     if (!this.clientKey) {
-      return false;
+      return PacketError.EOF;
     }
 
     this.serverKey = buffer.readBytes(Defines.KEY_BYTES);
     if (!this.serverKey) {
-      return false;
+      return PacketError.EOF;
     }
 
-    return true;
+    return PacketError.none;
   }
 
   public write(buffer: ByteBuffer) {
@@ -201,22 +196,20 @@ export class ConnectTokenPrivate {
     this.sharedTokenData.generate();
   }
 
-  public read(): boolean {
+  public read(): PacketError {
     this.clientId = this.tokenData.readUint64();
     if (!this.clientId) {
-      console.error('client id error');
-      return false;
+      return PacketError.EOF;
     }
-    if (!this.sharedTokenData.read(this.tokenData)) {
-      console.error('read share token error');
-      return false;
+    const err = this.sharedTokenData.read(this.tokenData);
+    if (err !== PacketError.none) {
+      return err;
     }
     this.userData = this.tokenData.readBytes(Defines.USER_DATA_BYTES);
     if (!this.userData) {
-      console.error('read user data error');
-      return false;
+      return PacketError.badUserData;
     }
-    return true;
+    return PacketError.none;
   }
 
   public write(): Uint8Array {
@@ -306,50 +299,6 @@ export class ConnectTokenPrivate {
 }
 
 export class ConnectToken {
-  public static read(
-    buffer: Uint8Array
-  ): { token?: ConnectToken; error?: ConnectTokenError } {
-    const bb = new ByteBuffer(buffer);
-    const token = new ConnectToken();
-    token.versionInfo = bb.readBytes(Defines.VERSION_INFO_BYTES);
-    if (token.versionInfo === undefined) {
-      return { error: ConnectTokenError.badVersionInfo };
-    }
-    if (
-      !Utils.arrayEqual(token.versionInfo, Defines.VERSION_INFO_BYTES_ARRAY)
-    ) {
-      return { error: ConnectTokenError.badVersionInfo };
-    }
-    token.protocolID = bb.readUint64();
-    if (token.protocolID === undefined) {
-      return { error: ConnectTokenError.badProtocolID };
-    }
-    token.createTimestamp = bb.readUint64();
-    if (token.createTimestamp === undefined) {
-      return { error: ConnectTokenError.badCreateTimestamp };
-    }
-    token.expireTimestamp = bb.readUint64();
-    if (token.expireTimestamp === undefined) {
-      return { error: ConnectTokenError.badExpireTimestamp };
-    }
-    if (token.createTimestamp.toNumber() > token.expireTimestamp.toNumber()) {
-      return { error: ConnectTokenError.expiredTokenTimestamp };
-    }
-    token.sequence = bb.readUint64();
-    if (token.sequence === undefined) {
-      return { error: ConnectTokenError.badSequence };
-    }
-    const privateData = bb.readBytes(Defines.CONNECT_TOKEN_PRIVATE_BYTES);
-    if (privateData === undefined) {
-      return { error: ConnectTokenError.badPrivateData };
-    }
-    token.privateData.tokenData = new ByteBuffer(privateData);
-    if (!token.sharedTokenData.read(bb)) {
-      return { error: ConnectTokenError.EOF };
-    }
-    return { token };
-  }
-
   public sharedTokenData: SharedTokenData;
   public versionInfo: Uint8Array;
   public protocolID: Long;
@@ -422,5 +371,45 @@ export class ConnectToken {
     bb.writeBytes(this.privateData.buffer);
     this.sharedTokenData.write(bb);
     return bb.bytes;
+  }
+
+  public read(buffer: Uint8Array): PacketError {
+    const bb = new ByteBuffer(buffer);
+    this.versionInfo = bb.readBytes(Defines.VERSION_INFO_BYTES);
+    if (
+      this.versionInfo === undefined ||
+      !Utils.arrayEqual(this.versionInfo, Defines.VERSION_INFO_BYTES_ARRAY)
+    ) {
+      return PacketError.badVersionInfo;
+    }
+    this.protocolID = bb.readUint64();
+    if (this.protocolID === undefined) {
+      return PacketError.badProtocolID;
+    }
+    this.createTimestamp = bb.readUint64();
+    if (this.createTimestamp === undefined) {
+      return PacketError.badCreateTimestamp;
+    }
+    this.expireTimestamp = bb.readUint64();
+    if (this.expireTimestamp === undefined) {
+      return PacketError.badExpireTimestamp;
+    }
+    if (this.createTimestamp.toNumber() > this.expireTimestamp.toNumber()) {
+      return PacketError.connectTokenExpired;
+    }
+    this.sequence = bb.readUint64();
+    if (this.sequence === undefined) {
+      return PacketError.badSequence;
+    }
+    const privateData = bb.readBytes(Defines.CONNECT_TOKEN_PRIVATE_BYTES);
+    if (privateData === undefined) {
+      return PacketError.badPrivateData;
+    }
+    this.privateData.tokenData = new ByteBuffer(privateData);
+    const err = this.sharedTokenData.read(bb);
+    if (err !== PacketError.none) {
+      return err;
+    }
+    return PacketError.none;
   }
 }

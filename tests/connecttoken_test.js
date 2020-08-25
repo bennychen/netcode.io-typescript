@@ -4,6 +4,7 @@ var { Utils } = require('../bin/Utils');
 var Defines = require('../bin/Defines');
 var chacha = require('../bin/chacha20poly1305');
 var assert = require('assert');
+const { PacketError } = require('../bin/Errors');
 
 var TEST_PROTOCOL_ID = BB.Long.fromNumber(0x1122334455667788);
 var TEST_CONNECT_TOKEN_EXPIRY = 30;
@@ -90,7 +91,7 @@ describe('ShareConnectToken tests', function () {
 
     var outData = new CT.SharedTokenData();
     var ret = outData.read(buffer);
-    assert.equal(ret, true, 'oh no');
+    assert.equal(ret, PacketError.none, 'oh no');
     assertBytesEqual(clientKey, outData.clientKey, 'oh no');
     assertBytesEqual(serverKey, outData.serverKey, 'oh no');
     assert.equal(data.timeoutSeconds, outData.timeoutSeconds, 'oh no');
@@ -135,7 +136,7 @@ describe('ShareConnectToken tests', function () {
     );
     assert.equal(decrypted !== undefined, true, 'decrypt failed');
     ret = token2.read();
-    assert.equal(ret, true, 'oh no');
+    assert.equal(ret, PacketError.none, 'oh no');
 
     // compare tokens
     assert.equal(token1.clientId.equals(token2.clientId), true, 'oh no');
@@ -207,9 +208,9 @@ describe('ShareConnectToken tests', function () {
     var tokenBuffer = inToken.write();
     assert.equal(tokenBuffer !== undefined, true, 'oh no');
 
-    var readRet = CT.ConnectToken.read(tokenBuffer);
-    assert.equal(readRet.error, undefined, 'oh no');
-    var outToken = readRet.token;
+    var outToken = new CT.ConnectToken();
+    var readRet = outToken.read(tokenBuffer);
+    assert.equal(readRet, PacketError.none, 'oh no');
     assertBytesEqual(
       outToken.versionInfo,
       Defines.VERSION_INFO_BYTES_ARRAY,
@@ -275,7 +276,7 @@ describe('ShareConnectToken tests', function () {
       true,
       'oh no'
     );
-    assert.equal(outToken.privateData.read(), true, 'oh no');
+    assert.equal(outToken.privateData.read(), PacketError.none, 'oh no');
 
     assert.equal(outToken.sharedTokenData.serverAddrs.length, 1, 'oh no');
     assert.equal(
