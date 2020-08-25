@@ -1,4 +1,4 @@
-export enum PacketError {
+export enum Errors {
   none,
   EOF,
 
@@ -22,4 +22,9 @@ export enum PacketError {
   badSequence,
   badPrivateData,
   badUserData,
+
+  invalidHandler,
+  readUDPError,
+  socketZeroRecv,
+  overMaxReadSize,
 }

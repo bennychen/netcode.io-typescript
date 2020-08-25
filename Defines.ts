@@ -30,3 +30,28 @@ export const VERSION_INFO_BYTES_ARRAY = new Uint8Array([
 ]);
 
 export const CONNECT_TOKEN_BYTES = 2048;
+
+export enum AddressType {
+  ADDRESS_NONE,
+  ADDRESS_IPV4,
+  ADDRESS_IPV6,
+}
+
+export interface INetcodeData {
+  data: Uint8Array;
+  from?: IUDPAddr;
+}
+
+export interface IUDPAddr {
+  ip: Uint8Array;
+  port: number;
+  isIPV6?: boolean;
+}
+export interface IUDPConn {
+  write(b: Uint8Array);
+  writeTo(b: Uint8Array, to: IUDPAddr);
+  close();
+  setReadBuffer(size: number);
+  setWriteBuffer(size: number);
+  readFromUDP(data: Uint8Array): { n: number; from: IUDPAddr; err: any };
+}
