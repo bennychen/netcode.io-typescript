@@ -27,4 +27,7 @@ export enum Errors {
   readUDPError,
   socketZeroRecv,
   overMaxReadSize,
+
+  exceededServerNumber,
+  dialServer,
 }

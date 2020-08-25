@@ -44,6 +44,11 @@ export class Long {
     return this._low == other._low && this._high == other._high;
   }
 
+  public setZero() {
+    this._high = 0;
+    this._low = 0;
+  }
+
   private _low: number;
   private _high: number;
 }

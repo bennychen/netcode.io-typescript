@@ -31,6 +31,8 @@ export const VERSION_INFO_BYTES_ARRAY = new Uint8Array([
 
 export const CONNECT_TOKEN_BYTES = 2048;
 
+export const PACKET_QUEUE_SIZE = 256;
+
 export enum AddressType {
   ADDRESS_NONE,
   ADDRESS_IPV4,
@@ -48,8 +50,8 @@ export interface IUDPAddr {
   isIPV6?: boolean;
 }
 export interface IUDPConn {
-  write(b: Uint8Array);
-  writeTo(b: Uint8Array, to: IUDPAddr);
+  write(b: Uint8Array): number;
+  writeTo(b: Uint8Array, to: IUDPAddr): number;
   close();
   setReadBuffer(size: number);
   setWriteBuffer(size: number);

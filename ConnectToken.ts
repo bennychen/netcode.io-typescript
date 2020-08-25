@@ -310,7 +310,7 @@ export class ConnectToken {
     userData: Uint8Array,
     privateKey: Uint8Array
   ): boolean {
-    const now = new Date().getTime();
+    const now = Date.now();
     this.createTimestamp = Long.fromNumber(now);
     if (expireSeconds >= 0) {
       this.expireTimestamp = Long.fromNumber(now + expireSeconds);

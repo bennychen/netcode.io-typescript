@@ -3,6 +3,7 @@ import { ByteBuffer, Long } from './ByteBuffer';
 import { ConnectTokenPrivate } from './ConnectToken';
 import { Errors } from './Errors';
 import { Utils } from './Utils';
+import { ReplayProtection } from './ReplayProtection';
 
 export enum PacketType {
   ConnectionRequest,
@@ -14,11 +15,6 @@ export enum PacketType {
   ConnectionDisconnect,
 
   ConnectionNumPackets,
-}
-
-class ReplayProtection {
-  MostRecentSequence: number;
-  ReceivedPacket: number[];
 }
 
 export interface IReadParams {
@@ -33,7 +29,12 @@ export interface IReadParams {
 export interface IPacket {
   getType(): PacketType;
   sequence(): number;
-  write(buf: Uint8Array, sequence: number, writePacketKey: Uint8Array): number;
+  write(
+    buf: Uint8Array,
+    protocolID: Long,
+    sequence: number,
+    writePacketKey: Uint8Array
+  ): number;
   read(
     packetData: Uint8Array,
     packetLen: number,
@@ -122,6 +123,7 @@ export class RequestPacket implements IPacket {
 
   public write(
     buf: Uint8Array,
+    protocolID: Long,
     sequence: number,
     writePacketKey: Uint8Array
   ): number {

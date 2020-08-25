@@ -8,7 +8,6 @@ export const SOCKET_SNDBUF_SIZE = 2048 * 2048;
 
 export type NetcodeRecvHandler = (data: INetcodeData) => void;
 export type UDPHandler = (data: IUDPAddr) => IUDPConn;
-export type ListenUDPHandler = (data: IUDPAddr) => IUDPConn;
 
 export class NetcodeConn {
   public constructor() {
@@ -21,14 +20,6 @@ export class NetcodeConn {
 
   public setRecvHandler(recvHandlerFn: NetcodeRecvHandler) {
     this._recvHandlerFn = recvHandlerFn;
-  }
-
-  public setDialHandler(dialHandler: UDPHandler) {
-    this._dialUdpFn = dialHandler;
-  }
-
-  public setListenHandler(dialHandler: UDPHandler) {
-    this._listenUdpFn = dialHandler;
   }
 
   public write(b: Uint8Array): number {
@@ -62,15 +53,12 @@ export class NetcodeConn {
     this._sendSize = bytes;
   }
 
-  public dial(address: IUDPAddr): boolean {
+  public dial(dialFn: UDPHandler, address: IUDPAddr): boolean {
     if (!this._recvHandlerFn) {
       return false;
     }
-    if (!this._dialUdpFn) {
-      return false;
-    }
 
-    this._conn = this._dialUdpFn(address);
+    this._conn = dialFn(address);
     if (this._conn !== undefined) {
       this.init();
       return true;
@@ -79,15 +67,12 @@ export class NetcodeConn {
     }
   }
 
-  public listen(address: IUDPAddr): boolean {
+  public listen(listenFn: UDPHandler, address: IUDPAddr): boolean {
     if (!this._recvHandlerFn) {
       return false;
     }
-    if (!this._listenUdpFn) {
-      return false;
-    }
 
-    this._conn = this._listenUdpFn(address);
+    this._conn = listenFn(address);
     if (this._conn !== undefined) {
       this.init();
       return true;
@@ -142,6 +127,4 @@ export class NetcodeConn {
   private _recvSize: number;
   private _sendSize: number;
   private _recvHandlerFn: NetcodeRecvHandler;
-  private _dialUdpFn: UDPHandler;
-  private _listenUdpFn: UDPHandler;
 }
