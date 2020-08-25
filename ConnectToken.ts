@@ -136,7 +136,6 @@ export class SharedTokenData {
 export class ConnectTokenPrivate {
   public static createEncrypted(buffer: Uint8Array): ConnectTokenPrivate {
     const p = new ConnectTokenPrivate();
-    p.mac = new Uint8Array(Defines.MAC_BYTES);
     p.tokenData = new ByteBuffer(buffer);
     return p;
   }
@@ -155,7 +154,6 @@ export class ConnectTokenPrivate {
     p.userData = userData;
     p.sharedTokenData.timeoutSeconds = timeoutSeconds;
     p.sharedTokenData.serverAddrs = serverAddrs;
-    p.mac = new Uint8Array(Defines.MAC_BYTES);
     return p;
   }
 
@@ -192,6 +190,7 @@ export class ConnectTokenPrivate {
 
   public constructor() {
     this.sharedTokenData = new SharedTokenData();
+    this.mac = new Uint8Array(Defines.MAC_BYTES);
   }
 
   public get buffer(): Uint8Array {
@@ -199,7 +198,7 @@ export class ConnectTokenPrivate {
   }
 
   public generate() {
-    return this.sharedTokenData.generate();
+    this.sharedTokenData.generate();
   }
 
   public read(): boolean {
@@ -259,20 +258,8 @@ export class ConnectTokenPrivate {
       );
       return false;
     }
-    Utils.blockCopy(
-      encrypted[0],
-      0,
-      this.tokenData.bytes,
-      0,
-      encrypted[0].length
-    );
-    Utils.blockCopy(
-      encrypted[1],
-      0,
-      this.tokenData.bytes,
-      encrypted[0].length,
-      encrypted[1].length
-    );
+    this.tokenData.bytes.set(encrypted[0], 0);
+    this.tokenData.bytes.set(encrypted[1], encrypted[0].length);
     this.mac = encrypted[1];
     return true;
   }
@@ -287,12 +274,11 @@ export class ConnectTokenPrivate {
       console.error('wrong token data length');
       return;
     }
-    Utils.blockCopy(
-      this.tokenData.bytes,
-      Defines.CONNECT_TOKEN_PRIVATE_BYTES - Defines.MAC_BYTES,
-      this.mac,
-      0,
-      Defines.MAC_BYTES
+    this.mac.set(
+      this.tokenData.bytes.subarray(
+        Defines.CONNECT_TOKEN_PRIVATE_BYTES - Defines.MAC_BYTES
+      ),
+      0
     );
     const { additionalData, nonce } = ConnectTokenPrivate.buildTokenCryptData(
       protocolID,
@@ -395,7 +381,7 @@ export class ConnectToken {
       this.expireTimestamp = Long.fromNumber(0xffffffffffffffff);
     }
     this.sharedTokenData.timeoutSeconds = timeoutSeconds;
-    this.versionInfo = new Uint8Array(Defines.VERSION_INFO_BYTES);
+    this.versionInfo = new Uint8Array(Defines.VERSION_INFO_BYTES_ARRAY);
     this.protocolID = protocoalID;
     this.sequence = Long.fromNumber(sequence);
 
@@ -405,6 +391,7 @@ export class ConnectToken {
       serverAddrs,
       userData
     );
+    this.privateData.generate();
     this.sharedTokenData.clientKey = this.privateData.sharedTokenData.clientKey;
     this.sharedTokenData.serverKey = this.privateData.sharedTokenData.serverKey;
     this.sharedTokenData.serverAddrs = serverAddrs;

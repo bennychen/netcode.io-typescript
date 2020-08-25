@@ -5,7 +5,7 @@ var Defines = require('../bin/Defines');
 var chacha = require('../bin/chacha20poly1305');
 var assert = require('assert');
 
-var TEST_PROTOCOL_ID = 0x1122334455667788;
+var TEST_PROTOCOL_ID = BB.Long.fromNumber(0x1122334455667788);
 var TEST_CONNECT_TOKEN_EXPIRY = 30;
 var TEST_SERVER_PORT = 40000;
 var TEST_CLIENT_ID = BB.Long.fromNumber(0x1);
@@ -46,17 +46,8 @@ var TEST_PRIVATE_KEY = new Uint8Array([
   0xa1,
 ]);
 
-function arrayEqual(a1, a2) {
-  a1.forEach(function (item, index) {
-    if (a2[index] !== item) {
-      return false;
-    }
-  });
-  return true;
-}
-
 function assertBytesEqual(a1, a2, str) {
-  assert.equal(arrayEqual(a1, a2), true, str);
+  assert.equal(Utils.arrayEqual(a1, a2), true, str);
 }
 
 function ipStringToBytes(ip) {
@@ -103,9 +94,9 @@ describe('ShareConnectToken tests', function () {
     assertBytesEqual(clientKey, outData.clientKey, 'oh no');
     assertBytesEqual(serverKey, outData.serverKey, 'oh no');
     assert.equal(data.timeoutSeconds, outData.timeoutSeconds, 'oh no');
-    assert.equal(outData.serverAddrs.length, 1, 'on no');
-    assertBytesEqual(outData.serverAddrs[0].ip, addr.ip, 'on no');
-    assert.equal(outData.serverAddrs[0].port, addr.port, 'on no');
+    assert.equal(outData.serverAddrs.length, 1, 'oh no');
+    assertBytesEqual(outData.serverAddrs[0].ip, addr.ip, 'oh no');
+    assert.equal(outData.serverAddrs[0].port, addr.port, 'oh no');
   });
 
   it('read/write private connect token', function () {
@@ -144,34 +135,34 @@ describe('ShareConnectToken tests', function () {
     );
     assert.equal(decrypted !== undefined, true, 'decrypt failed');
     ret = token2.read();
-    assert.equal(ret, true, 'on no');
+    assert.equal(ret, true, 'oh no');
 
     // compare tokens
-    assert.equal(token1.clientId.equals(token2.clientId), true, 'on no');
+    assert.equal(token1.clientId.equals(token2.clientId), true, 'oh no');
     assert.equal(
       token1.sharedTokenData.serverAddrs.length,
       token2.sharedTokenData.serverAddrs.length,
-      'on no'
+      'oh no'
     );
     assertBytesEqual(
       token1.sharedTokenData.serverAddrs[0].ip,
       token2.sharedTokenData.serverAddrs[0].ip,
-      'on no'
+      'oh no'
     );
     assert.equal(
       token1.sharedTokenData.serverAddrs[0].port,
       token2.sharedTokenData.serverAddrs[0].port,
-      'on no'
+      'oh no'
     );
     assertBytesEqual(
       token1.sharedTokenData.clientKey,
       token2.sharedTokenData.clientKey,
-      'on no'
+      'oh no'
     );
     assertBytesEqual(
       token1.sharedTokenData.serverKey,
       token2.sharedTokenData.serverKey,
-      'on no'
+      'oh no'
     );
 
     const buffer = new Uint8Array(Defines.CONNECT_TOKEN_PRIVATE_BYTES);
@@ -186,6 +177,126 @@ describe('ShareConnectToken tests', function () {
     );
     assert.equal(ret, true, 'oh no');
     assert.equal(token1.buffer.length, token2.buffer.length, 'oh no');
-    assertBytesEqual(token1.buffer, token2.buffer, 'on no');
+    assertBytesEqual(token1.buffer, token2.buffer, 'oh no');
+  });
+
+  it('read/write connect token', function () {
+    var addr = {
+      ip: ipStringToBytes('10.20.30.40'),
+      port: 40000,
+    };
+    var key = Utils.generateKey();
+    var userData = Utils.getRandomBytes(Defines.USER_DATA_BYTES);
+    var inToken = new CT.ConnectToken();
+    var ret = inToken.generate(
+      TEST_CLIENT_ID,
+      [addr],
+      TEST_PROTOCOL_ID,
+      TEST_CONNECT_TOKEN_EXPIRY,
+      TEST_TIMEOUT_SECONDS,
+      TEST_SEQUENCE_START,
+      userData,
+      key
+    );
+    assertBytesEqual(
+      inToken.versionInfo,
+      Defines.VERSION_INFO_BYTES_ARRAY,
+      'oh no'
+    );
+    assert.equal(ret, true, 'oh no');
+    var tokenBuffer = inToken.write();
+    assert.equal(tokenBuffer !== undefined, true, 'oh no');
+
+    var readRet = CT.ConnectToken.read(tokenBuffer);
+    assert.equal(readRet.error, undefined, 'oh no');
+    var outToken = readRet.token;
+    assertBytesEqual(
+      outToken.versionInfo,
+      Defines.VERSION_INFO_BYTES_ARRAY,
+      'oh no'
+    );
+    assert.equal(outToken.protocolID.equals(TEST_PROTOCOL_ID), true, 'oh no');
+    assert.equal(
+      outToken.createTimestamp.equals(inToken.createTimestamp),
+      true,
+      'oh no'
+    );
+    assert.equal(
+      outToken.expireTimestamp.equals(inToken.expireTimestamp),
+      true,
+      'oh no'
+    );
+    assert.equal(outToken.sequence.equals(inToken.sequence), true, 'oh no');
+
+    assert.equal(outToken.sharedTokenData.serverAddrs.length, 1, 'oh no');
+    assert.equal(
+      outToken.sharedTokenData.serverAddrs[0].port,
+      addr.port,
+      'oh no'
+    );
+    assertBytesEqual(
+      outToken.sharedTokenData.serverAddrs[0].ip,
+      addr.ip,
+      'oh no'
+    );
+    assertBytesEqual(
+      outToken.sharedTokenData.clientKey,
+      inToken.sharedTokenData.clientKey,
+      'oh no'
+    );
+    assertBytesEqual(
+      outToken.sharedTokenData.serverKey,
+      inToken.sharedTokenData.serverKey,
+      'oh no'
+    );
+    assertBytesEqual(
+      outToken.privateData.buffer,
+      inToken.privateData.buffer,
+      'oh no'
+    );
+
+    assert.equal(
+      outToken.privateData.decrypt(
+        TEST_PROTOCOL_ID,
+        outToken.expireTimestamp,
+        outToken.sequence,
+        key
+      ) !== undefined,
+      true,
+      'oh no'
+    );
+    assert.equal(
+      inToken.privateData.decrypt(
+        TEST_PROTOCOL_ID,
+        inToken.expireTimestamp,
+        inToken.sequence,
+        key
+      ) !== undefined,
+      true,
+      'oh no'
+    );
+    assert.equal(outToken.privateData.read(), true, 'oh no');
+
+    assert.equal(outToken.sharedTokenData.serverAddrs.length, 1, 'oh no');
+    assert.equal(
+      outToken.sharedTokenData.serverAddrs[0].port,
+      addr.port,
+      'oh no'
+    );
+    assertBytesEqual(
+      outToken.sharedTokenData.serverAddrs[0].ip,
+      addr.ip,
+      'oh no'
+    );
+    assertBytesEqual(
+      outToken.sharedTokenData.clientKey,
+      inToken.sharedTokenData.clientKey,
+      'oh no'
+    );
+    assertBytesEqual(
+      outToken.sharedTokenData.serverKey,
+      inToken.sharedTokenData.serverKey,
+      'oh no'
+    );
   });
 });
