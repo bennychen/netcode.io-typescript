@@ -15,13 +15,25 @@ export interface IUDPAddr {
   isIPV6?: boolean;
 }
 
+export enum ConnectTokenError {
+  none,
+  badVersionInfo,
+  badProtocolID,
+  badCreateTimestamp,
+  badExpireTimestamp,
+  expiredTokenTimestamp,
+  badSequence,
+  badPrivateData,
+  EOF,
+}
+
 // This struct contains data that is shared in both public and private parts of the
 // connect token.
 export class SharedTokenData {
-  timeoutSeconds: number;
-  serverAddrs: IUDPAddr[];
-  clientKey: Uint8Array;
-  serverKey: Uint8Array;
+  public timeoutSeconds: number;
+  public serverAddrs: IUDPAddr[];
+  public clientKey: Uint8Array;
+  public serverKey: Uint8Array;
 
   public generate() {
     this.clientKey = Utils.generateKey();
@@ -122,12 +134,6 @@ export class SharedTokenData {
 
 // The private parts of a connect token
 export class ConnectTokenPrivate {
-  sharedTokenData: SharedTokenData;
-  clientId: Long;
-  userData: Uint8Array;
-  mac: Uint8Array;
-  tokenData: ByteBuffer;
-
   public static createEncrypted(buffer: Uint8Array): ConnectTokenPrivate {
     const p = new ConnectTokenPrivate();
     p.mac = new Uint8Array(Defines.MAC_BYTES);
@@ -177,6 +183,12 @@ export class ConnectTokenPrivate {
   private static _sharedNonce: ByteBuffer = new ByteBuffer(
     new Uint8Array(8 + 4)
   );
+
+  public sharedTokenData: SharedTokenData;
+  public clientId: Long;
+  public userData: Uint8Array;
+  public mac: Uint8Array;
+  public tokenData: ByteBuffer;
 
   public constructor() {
     this.sharedTokenData = new SharedTokenData();
@@ -307,4 +319,121 @@ export class ConnectTokenPrivate {
   }
 }
 
-export class ConnectToken {}
+export class ConnectToken {
+  public static read(
+    buffer: Uint8Array
+  ): { token?: ConnectToken; error?: ConnectTokenError } {
+    const bb = new ByteBuffer(buffer);
+    const token = new ConnectToken();
+    token.versionInfo = bb.readBytes(Defines.VERSION_INFO_BYTES);
+    if (token.versionInfo === undefined) {
+      return { error: ConnectTokenError.badVersionInfo };
+    }
+    if (
+      !Utils.arrayEqual(token.versionInfo, Defines.VERSION_INFO_BYTES_ARRAY)
+    ) {
+      return { error: ConnectTokenError.badVersionInfo };
+    }
+    token.protocolID = bb.readUint64();
+    if (token.protocolID === undefined) {
+      return { error: ConnectTokenError.badProtocolID };
+    }
+    token.createTimestamp = bb.readUint64();
+    if (token.createTimestamp === undefined) {
+      return { error: ConnectTokenError.badCreateTimestamp };
+    }
+    token.expireTimestamp = bb.readUint64();
+    if (token.expireTimestamp === undefined) {
+      return { error: ConnectTokenError.badExpireTimestamp };
+    }
+    if (token.createTimestamp.toNumber() > token.expireTimestamp.toNumber()) {
+      return { error: ConnectTokenError.expiredTokenTimestamp };
+    }
+    token.sequence = bb.readUint64();
+    if (token.sequence === undefined) {
+      return { error: ConnectTokenError.badSequence };
+    }
+    const privateData = bb.readBytes(Defines.CONNECT_TOKEN_PRIVATE_BYTES);
+    if (privateData === undefined) {
+      return { error: ConnectTokenError.badPrivateData };
+    }
+    token.privateData.tokenData = new ByteBuffer(privateData);
+    if (!token.sharedTokenData.read(bb)) {
+      return { error: ConnectTokenError.EOF };
+    }
+    return { token };
+  }
+
+  public sharedTokenData: SharedTokenData;
+  public versionInfo: Uint8Array;
+  public protocolID: Long;
+  public createTimestamp: Long;
+  public expireTimestamp: Long;
+  public sequence: Long;
+  public privateData: ConnectTokenPrivate;
+
+  public constructor() {
+    this.sharedTokenData = new SharedTokenData();
+    this.privateData = new ConnectTokenPrivate();
+  }
+
+  public generate(
+    clientID: Long,
+    serverAddrs: IUDPAddr[],
+    protocoalID: Long,
+    expireSeconds: number,
+    timeoutSeconds: number,
+    sequence: number,
+    userData: Uint8Array,
+    privateKey: Uint8Array
+  ): boolean {
+    const now = new Date().getTime();
+    this.createTimestamp = Long.fromNumber(now);
+    if (expireSeconds >= 0) {
+      this.expireTimestamp = Long.fromNumber(now + expireSeconds);
+    } else {
+      this.expireTimestamp = Long.fromNumber(0xffffffffffffffff);
+    }
+    this.sharedTokenData.timeoutSeconds = timeoutSeconds;
+    this.versionInfo = new Uint8Array(Defines.VERSION_INFO_BYTES);
+    this.protocolID = protocoalID;
+    this.sequence = Long.fromNumber(sequence);
+
+    this.privateData = ConnectTokenPrivate.create(
+      clientID,
+      timeoutSeconds,
+      serverAddrs,
+      userData
+    );
+    this.sharedTokenData.clientKey = this.privateData.sharedTokenData.clientKey;
+    this.sharedTokenData.serverKey = this.privateData.sharedTokenData.serverKey;
+    this.sharedTokenData.serverAddrs = serverAddrs;
+    if (this.privateData.write() === undefined) {
+      return false;
+    }
+    if (
+      !this.privateData.encrypt(
+        this.protocolID,
+        this.expireTimestamp,
+        this.sequence,
+        privateKey
+      )
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  public write(): Uint8Array {
+    const bb = new ByteBuffer(new Uint8Array(Defines.CONNECT_TOKEN_BYTES));
+    bb.writeBytes(this.versionInfo);
+    bb.writeUint64(this.protocolID);
+    bb.writeUint64(this.createTimestamp);
+    bb.writeUint64(this.expireTimestamp);
+    bb.writeUint64(this.sequence);
+
+    bb.writeBytes(this.privateData.buffer);
+    this.sharedTokenData.write(bb);
+    return bb.bytes;
+  }
+}

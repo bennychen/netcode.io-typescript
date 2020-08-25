@@ -30,4 +30,13 @@ export class Utils {
       dst[dstOffset + i] = src[srcOffset + i];
     }
   }
+
+  public static arrayEqual(a1: Uint8Array, a2: Uint8Array) {
+    a1.forEach(function (item, index) {
+      if (a2[index] !== item) {
+        return false;
+      }
+    });
+    return true;
+  }
 }
