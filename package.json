@@ -1,0 +1,26 @@
+{
+  "name": "netcodeio",
+  "version": "1.0.2",
+  "description": "",
+  "main": "index.js",
+  "bin": {
+    "netcodeio": "netcodeio.js"
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "mocha ./tests/*_test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bennychen/netcode.io-typescript.git"
+  },
+  "author": "Benny Chen",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bennychen/netcode.io-typescript/issues"
+  },
+  "homepage": "https://github.com/bennychen/netcode.io-typescript#readme",
+  "devDependencies": {}
+}

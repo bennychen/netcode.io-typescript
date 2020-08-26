@@ -6,10 +6,12 @@
     "target": "es6",
     "experimentalDecorators": true,
     "sourceMap": true,
+    "alwaysStrict": true,
     "rootDir": "./",
-    // "outFile": "./bin/networkio.js",
     "outDir": "./bin",
-    "removeComments": true
+    "removeComments": true,
+    "skipLibCheck": true
   },
-  "exclude": ["./bin"]
+  "include": ["./**/*.ts"],
+  "exclude": ["./bin/"]
 }
