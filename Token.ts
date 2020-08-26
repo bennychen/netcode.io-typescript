@@ -130,9 +130,7 @@ export class ConnectTokenPrivate {
     userData: Uint8Array
   ): ConnectTokenPrivate {
     const p = new ConnectTokenPrivate();
-    p.tokenData = new ByteBuffer(
-      new Uint8Array(Defines.CONNECT_TOKEN_PRIVATE_BYTES)
-    );
+    p.tokenData = ByteBuffer.allocate(Defines.CONNECT_TOKEN_PRIVATE_BYTES);
     p.clientId = clientID;
     p.userData = userData;
     p.sharedTokenData.timeoutSeconds = timeoutSeconds;
@@ -158,12 +156,10 @@ export class ConnectTokenPrivate {
       nonce: this._sharedNonce,
     };
   }
-  private static _sharedAdditionalBytes: ByteBuffer = new ByteBuffer(
-    new Uint8Array(Defines.VERSION_INFO_BYTES + 8 + 8)
+  private static _sharedAdditionalBytes: ByteBuffer = ByteBuffer.allocate(
+    Defines.VERSION_INFO_BYTES + 8 + 8
   );
-  private static _sharedNonce: ByteBuffer = new ByteBuffer(
-    new Uint8Array(8 + 4)
-  );
+  private static _sharedNonce: ByteBuffer = ByteBuffer.allocate(8 + 4);
 
   public sharedTokenData: SharedTokenData;
   public clientId: Long;
@@ -349,7 +345,7 @@ export class ConnectToken {
   }
 
   public write(): Uint8Array {
-    const bb = new ByteBuffer(new Uint8Array(Defines.CONNECT_TOKEN_BYTES));
+    const bb = ByteBuffer.allocate(Defines.CONNECT_TOKEN_BYTES);
     bb.writeBytes(this.versionInfo);
     bb.writeUint64(this.protocolID);
     bb.writeUint64(this.createTimestamp);
@@ -400,4 +396,95 @@ export class ConnectToken {
     }
     return Errors.none;
   }
+}
+
+export class ChallengeToken {
+  public get clientID(): Long {
+    return this._clientID;
+  }
+
+  public get userData(): Uint8Array {
+    return this._userData.bytes;
+  }
+
+  public constructor(clientID?: Long) {
+    this._userData = ByteBuffer.allocate(Defines.USER_DATA_BYTES);
+    if (clientID) {
+      this._clientID = clientID;
+    }
+  }
+
+  public static encrypt(
+    tokenBuffer: Uint8Array,
+    sequance: Long,
+    key: Uint8Array
+  ) {
+    this._nonceBuffer.clearPosition();
+    this._nonceBuffer.writeUint32(0);
+    this._nonceBuffer.writeUint64(sequance);
+    const encrypted = chacha.aead_encrypt(
+      key,
+      this._nonceBuffer.bytes,
+      tokenBuffer.subarray(
+        0,
+        Defines.CHALLENGE_TOKEN_BYTES - Defines.MAC_BYTES
+      ),
+      []
+    );
+    tokenBuffer.set(encrypted[0], 0);
+    tokenBuffer.set(encrypted[1], encrypted[0].length);
+  }
+
+  public static decrypt(
+    tokenBuffer: Uint8Array,
+    sequance: Long,
+    key: Uint8Array
+  ): Uint8Array {
+    this._nonceBuffer.clearPosition();
+    this._nonceBuffer.writeUint32(0);
+    this._nonceBuffer.writeUint64(sequance);
+    const decrypted = chacha.aead_decrypt(
+      key,
+      this._nonceBuffer.bytes,
+      tokenBuffer.subarray(
+        0,
+        Defines.CHALLENGE_TOKEN_BYTES - Defines.MAC_BYTES
+      ),
+      [],
+      tokenBuffer.subarray(Defines.CHALLENGE_TOKEN_BYTES - Defines.MAC_BYTES)
+    );
+    if (decrypted) {
+      return decrypted;
+    }
+  }
+
+  private static _nonceBuffer: ByteBuffer = ByteBuffer.allocate(8 + 4);
+
+  public write(userData: Uint8Array): Uint8Array {
+    this._userData.writeBytes(userData);
+
+    const tokenData = ByteBuffer.allocate(Defines.CHALLENGE_TOKEN_BYTES);
+    tokenData.writeUint64(this._clientID);
+    tokenData.writeBytes(this._userData.bytes);
+    return tokenData.bytes;
+  }
+
+  public read(buffer: Uint8Array): Errors {
+    const bb = new ByteBuffer(buffer);
+    this._clientID = bb.readUint64();
+    if (this._clientID === undefined) {
+      return Errors.invalidClientID;
+    }
+
+    const userData = bb.readBytes(Defines.USER_DATA_BYTES);
+    if (userData === undefined) {
+      return Errors.badUserData;
+    }
+    this._userData.writeBytes(userData);
+    this._userData.clearPosition();
+    return Errors.none;
+  }
+
+  private _clientID: Long;
+  private _userData: ByteBuffer;
 }

@@ -1,6 +1,6 @@
 import * as Defines from './Defines';
 import { ByteBuffer, Long } from './ByteBuffer';
-import { ConnectTokenPrivate } from './ConnectToken';
+import { ConnectTokenPrivate } from './Token';
 import { Errors } from './Errors';
 import { Utils } from './Utils';
 import { ReplayProtection } from './ReplayProtection';

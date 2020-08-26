@@ -6,7 +6,7 @@ import {
   PacketFactory,
   RequestPacket,
 } from './Packet';
-import { ConnectToken } from './ConnectToken';
+import { ConnectToken } from './Token';
 import * as Defines from './Defines';
 import { ReplayProtection } from './ReplayProtection';
 import { Errors } from './Errors';

@@ -14,6 +14,7 @@ export enum Errors {
   noPrivateKey,
   badVersionInfo,
   badProtocolID,
+  invalidClientID,
   connectTokenExpired,
   badCreateTimestamp,
   badExpireTimestamp,

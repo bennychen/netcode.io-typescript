@@ -1,4 +1,4 @@
-var CT = require('../bin/ConnectToken');
+var CT = require('../bin/Token');
 var BB = require('../bin/ByteBuffer');
 var { Utils } = require('../bin/Utils');
 var Defines = require('../bin/Defines');
@@ -68,7 +68,7 @@ function ipStringToBytes(ip) {
   return bytes;
 }
 
-describe('ShareConnectToken tests', function () {
+describe('ConnectToken tests', function () {
   it('read/write shared connect token', function () {
     var clientKey = Utils.generateKey();
     assert.equal(clientKey.length, Defines.KEY_BYTES, 'oh no');
@@ -299,5 +299,34 @@ describe('ShareConnectToken tests', function () {
       inToken.sharedTokenData.serverKey,
       'oh no'
     );
+  });
+});
+
+describe('ChallengeToken tests', function () {
+  it('read/write challenge token', function () {
+    var token = new CT.ChallengeToken(TEST_CLIENT_ID);
+    var userData = chacha.getRandomBytes(Defines.USER_DATA_BYTES);
+    var tokenBuffer = token.write(userData);
+
+    var sequence = BB.Long.fromNumber(9999);
+    var key = Utils.generateKey();
+
+    assert.equal(tokenBuffer.length, Defines.CHALLENGE_TOKEN_BYTES, 'oh no');
+    CT.ChallengeToken.encrypt(tokenBuffer, sequence, key);
+    assert.equal(tokenBuffer.length, Defines.CHALLENGE_TOKEN_BYTES, 'oh no');
+
+    var decrypted = CT.ChallengeToken.decrypt(tokenBuffer, sequence, key);
+    assert.equal(decrypted instanceof Uint8Array, true, 'oh no');
+    assert.equal(
+      decrypted.length,
+      Defines.CHALLENGE_TOKEN_BYTES - Defines.MAC_BYTES,
+      'oh no'
+    );
+
+    var token2 = new CT.ChallengeToken();
+    var err = token2.read(decrypted);
+    assert.equal(err, Errors.none, 'oh no');
+    assert.equal(token2.clientID.equals(token.clientID), true, 'oh no');
+    assertBytesEqual(token2.userData, token.userData, 'oh no');
   });
 });
