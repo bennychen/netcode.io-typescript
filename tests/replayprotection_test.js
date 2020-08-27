@@ -1,5 +1,7 @@
-var { ReplayProtection } = require('../bin/ReplayProtection');
-var Defines = require('../bin/Defines');
+var {
+  ReplayProtection,
+  REPLAY_PROTECTION_BUFFER_SIZE,
+} = require('../bin/ReplayProtection');
 var assert = require('assert');
 
 describe('ReplayProtection tests', function () {
@@ -32,7 +34,7 @@ describe('ReplayProtection tests', function () {
     }
 
     // the first time we receive packets, they should not be already received
-    var maxSequence = Defines.REPLAY_PROTECTION_BUFFER_SIZE * 4;
+    var maxSequence = REPLAY_PROTECTION_BUFFER_SIZE * 4;
     for (let sequence = 0; sequence < maxSequence; sequence += 1) {
       if (rp.checkAlreadyReceived(sequence)) {
         assert.fail(
@@ -62,11 +64,7 @@ describe('ReplayProtection tests', function () {
     }
 
     // jumping ahead to a much higher sequence should be considered not already received
-    if (
-      rp.checkAlreadyReceived(
-        maxSequence + Defines.REPLAY_PROTECTION_BUFFER_SIZE
-      )
-    ) {
+    if (rp.checkAlreadyReceived(maxSequence + REPLAY_PROTECTION_BUFFER_SIZE)) {
       assert.fail(
         'jumping ahead to a much higher sequence should be considered not already received'
       );

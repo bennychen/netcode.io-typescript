@@ -5,7 +5,6 @@ export const USER_DATA_BYTES = 256;
 export const MAX_PACKET_BYTES = 1220;
 export const MAX_PAYLOAD_BYTES = 1200;
 export const MAX_ADDRESS_STRING_LENGTH = 256;
-export const REPLAY_PROTECTION_BUFFER_SIZE = 256;
 
 export const KEY_BYTES = 32;
 export const MAC_BYTES = 16;

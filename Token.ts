@@ -351,7 +351,6 @@ export class ConnectToken {
     bb.writeUint64(this.createTimestamp);
     bb.writeUint64(this.expireTimestamp);
     bb.writeUint64(this.sequence);
-
     bb.writeBytes(this.privateData.buffer);
     this.sharedTokenData.write(bb);
     return bb.bytes;

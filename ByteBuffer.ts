@@ -78,6 +78,10 @@ export class ByteBuffer {
     return this._bytes.length;
   }
 
+  public skipPosition(value: number) {
+    this._position += value;
+  }
+
   public clearPosition() {
     this._position = 0;
   }

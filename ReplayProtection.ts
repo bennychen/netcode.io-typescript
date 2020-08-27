@@ -1,4 +1,4 @@
-import { REPLAY_PROTECTION_BUFFER_SIZE } from './Defines';
+export const REPLAY_PROTECTION_BUFFER_SIZE = 256;
 
 // Our type to hold replay protection of packet sequences
 export class ReplayProtection {

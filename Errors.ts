@@ -5,6 +5,7 @@ export enum Errors {
   invalidPacket,
   packetTypeNotAllowed,
   badPacketLength,
+  packetAlreadyReceived,
 
   emptyServer,
   tooManyServers,
@@ -12,6 +13,7 @@ export enum Errors {
   invalidPort,
 
   noPrivateKey,
+  emptyPacketKey,
   badVersionInfo,
   badProtocolID,
   invalidClientID,
@@ -28,7 +30,20 @@ export enum Errors {
   readUDPError,
   socketZeroRecv,
   overMaxReadSize,
-
   exceededServerNumber,
   dialServer,
+  errDecryptData,
+
+  invalidDenyPacketDataSize,
+  invalidChallengePacketDataSize,
+  invalidChallengeTokenSequence,
+  invalidChallengeTokenData,
+  invalidResponseTokenData,
+  invalidResponseTokenSequence,
+  invalidResponsePacketDataSize,
+  invalidDisconnectPacketDataSize,
+  invalidKeepAliveClientIndex,
+  invalidKeepAliveMaxClients,
+  payloadPacketTooSmall,
+  payloadPacketTooLarge,
 }
