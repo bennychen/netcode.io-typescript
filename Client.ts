@@ -2,7 +2,6 @@ import { Long } from './ByteBuffer';
 import {
   IPacket,
   PacketType,
-  PacketQueue,
   PacketFactory,
   RequestPacket,
   ChallengePacket,
@@ -13,9 +12,11 @@ import {
 } from './Packet';
 import { ConnectToken } from './Token';
 import * as Defines from './Defines';
+import { Queue } from './Utils';
 import { ReplayProtection } from './ReplayProtection';
 import { Errors } from './Errors';
-import { NetcodeConn, UDPHandler } from './NetcodeConnection';
+import { Utils } from './Utils';
+import { INetcodeData, NetcodeConn, UDPConnCreator } from './NetcodeConnection';
 
 export enum ClientState {
   tokenExpired = -6,
@@ -72,7 +73,7 @@ export class Client {
     this.state = ClientState.disconnected;
     this._challenTokenData = new Uint8Array(Defines.CHALLENGE_TOKEN_BYTES);
     this._replayProtection = new ReplayProtection();
-    this._payloadPacketQueue = new PacketQueue(Defines.PACKET_QUEUE_SIZE);
+    this._payloadPacketQueue = new Queue<IPacket>(Defines.PACKET_QUEUE_SIZE);
     this._allowedPackets = new Uint8Array(PacketType.numPackets);
     this._allowedPackets[PacketType.connectionDenied] = 1;
     this._allowedPackets[PacketType.connectionChallenge] = 1;
@@ -81,7 +82,7 @@ export class Client {
     this._allowedPackets[PacketType.connectionDisconnect] = 1;
   }
 
-  public connect(dial: UDPHandler): Errors {
+  public connect(dial: UDPConnCreator): Errors {
     this._dialFn = dial;
     this._startTime = 0;
     if (
@@ -95,7 +96,13 @@ export class Client {
 
     this._conn = new NetcodeConn();
     this._conn.setRecvHandler(this.handleNetcodeData);
-    if (!this._conn.dial(dial, this._serverAddr)) {
+    if (
+      !this._conn.dial(
+        dial,
+        Utils.addressToIPString(this._serverAddr),
+        this._serverAddr.port
+      )
+    ) {
       return Errors.dialServer;
     }
 
@@ -314,7 +321,7 @@ export class Client {
     return true;
   }
 
-  private handleNetcodeData(data: Defines.INetcodeData) {
+  private handleNetcodeData(data: INetcodeData) {
     this._receivedPackets.push(data);
   }
 
@@ -406,7 +413,7 @@ export class Client {
     }
   }
 
-  private _dialFn: UDPHandler;
+  private _dialFn: UDPConnCreator;
   private _id: Long;
   private _connectToken: ConnectToken;
   private _clientIndex: number = 0;
@@ -427,8 +434,8 @@ export class Client {
   private _challenTokenData: Uint8Array;
   private _challengeSequence: Long;
   private _allowedPackets: Uint8Array;
-  private _payloadPacketQueue: PacketQueue;
-  private _receivedPackets: Defines.INetcodeData[];
+  private _payloadPacketQueue: Queue<IPacket>;
+  private _receivedPackets: INetcodeData[];
 
   private _state: ClientState;
   private _replayProtection: ReplayProtection;

@@ -38,21 +38,19 @@ export enum AddressType {
   ipv6,
 }
 
-export interface INetcodeData {
-  data: Uint8Array;
-  from?: IUDPAddr;
-}
-
 export interface IUDPAddr {
   ip: Uint8Array;
   port: number;
   isIPV6?: boolean;
 }
+
 export interface IUDPConn {
-  write(b: Uint8Array): number;
-  writeTo(b: Uint8Array, to: IUDPAddr): number;
+  connect(ip: string, port: number);
+  bind(port: number);
+  send(b: Uint8Array): number;
+  sendTo(b: Uint8Array, ip: string, port: number): number;
   close();
   setReadBuffer(size: number);
   setWriteBuffer(size: number);
-  readFromUDP(data: Uint8Array): { n: number; from: IUDPAddr; err: any };
+  onMessage(callback: Function);
 }

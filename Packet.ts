@@ -43,44 +43,6 @@ export interface IPacket {
   ): Errors;
 }
 
-export class PacketQueue {
-  public constructor(capacity: number) {
-    this._capacity = capacity;
-    this._packets = new Array<IPacket>(capacity);
-  }
-
-  public clear() {
-    this._numPackets = 0;
-    this._startIndex = 0;
-    this._packets.fill(null);
-  }
-
-  public push(packet: IPacket): boolean {
-    if (this._numPackets === this._capacity) {
-      return false;
-    }
-
-    const index = (this._startIndex + this._numPackets) % this._capacity;
-    this._packets[index] = packet;
-    this._numPackets++;
-    return true;
-  }
-
-  public pop(): IPacket {
-    if (this._numPackets === 0) {
-      return null;
-    }
-    const packet = this._packets[this._startIndex];
-    this._startIndex = (this._startIndex + 1) % this._capacity;
-    this._numPackets--;
-    return packet;
-  }
-
-  private _numPackets: number;
-  private _startIndex: number;
-  private _packets: Array<IPacket>;
-  private _capacity: number;
-}
 
 export class PacketFactory {
   public static peekPacketType(packetBuffer: Uint8Array): PacketType {

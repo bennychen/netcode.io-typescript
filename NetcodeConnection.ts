@@ -1,13 +1,19 @@
 import * as Defines from './Defines';
-import { IUDPAddr, IUDPConn, INetcodeData } from './Defines';
+import { IUDPAddr, IUDPConn } from './Defines';
 import { Errors } from './Errors';
+import { Queue } from './Utils';
 import { PacketFactory, PacketType } from './Packet';
 
 export const SOCKET_RCVBUF_SIZE = 2048 * 2048;
 export const SOCKET_SNDBUF_SIZE = 2048 * 2048;
 
 export type NetcodeRecvHandler = (data: INetcodeData) => void;
-export type UDPHandler = (data: IUDPAddr) => IUDPConn;
+export type UDPConnCreator = () => IUDPConn;
+
+export interface INetcodeData {
+  data: Uint8Array;
+  from?: IUDPAddr;
+}
 
 export class NetcodeConn {
   public constructor() {
@@ -15,7 +21,7 @@ export class NetcodeConn {
     this._maxBytes = Defines.MAX_PACKET_BYTES;
     this._recvSize = SOCKET_RCVBUF_SIZE;
     this._sendSize = SOCKET_SNDBUF_SIZE;
-    this._buffer = new Uint8Array(this._maxBytes);
+    this._msgQueue = new Queue<INetcodeData>(128);
   }
 
   public setRecvHandler(recvHandlerFn: NetcodeRecvHandler) {
@@ -26,14 +32,14 @@ export class NetcodeConn {
     if (this._isClosed) {
       return -1;
     }
-    return this._conn.write(b);
+    return this._conn.send(b);
   }
 
-  public writeTo(b: Uint8Array, to: IUDPAddr): number {
+  public writeTo(b: Uint8Array, address: string, port: number): number {
     if (this._isClosed) {
       return -1;
     }
-    return this._conn.writeTo(b, to);
+    return this._conn.sendTo(b, address, port);
   }
 
   public close() {
@@ -53,13 +59,33 @@ export class NetcodeConn {
     this._sendSize = bytes;
   }
 
-  public dial(dialFn: UDPHandler, address: IUDPAddr): boolean {
+  public dial(
+    createUdpConn: UDPConnCreator,
+    ip: string,
+    port: number
+  ): boolean {
     if (!this._recvHandlerFn) {
       return false;
     }
 
-    this._conn = dialFn(address);
+    this._conn = createUdpConn();
     if (this._conn !== undefined) {
+      this.init();
+      this._conn.connect(ip, port);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  public listen(createUdpConn: UDPConnCreator, port: number): boolean {
+    if (!this._recvHandlerFn) {
+      return false;
+    }
+
+    this._conn = createUdpConn();
+    if (this._conn !== undefined) {
+      this._conn.bind(port);
       this.init();
       return true;
     } else {
@@ -67,57 +93,40 @@ export class NetcodeConn {
     }
   }
 
-  public listen(listenFn: UDPHandler, address: IUDPAddr): boolean {
-    if (!this._recvHandlerFn) {
-      return false;
-    }
-
-    this._conn = listenFn(address);
-    if (this._conn !== undefined) {
-      this.init();
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  // read does the actual connection read call, verifies we have a
-  // buffer > 0 and < maxBytes and is of a valid packet type before
-  // we bother to attempt to actually dispatch it to the recvHandlerFn.
   public read(): Errors {
     if (!this._recvHandlerFn) {
       return Errors.invalidHandler;
     }
-    const { n, from, err } = this._conn.readFromUDP(this._buffer);
-    if (err) {
-      return Errors.readUDPError;
-    }
-
-    if (n === 0) {
-      return Errors.socketZeroRecv;
-    }
-    if (n > this._maxBytes) {
-      return Errors.overMaxReadSize;
-    }
-
-    if (PacketFactory.peekPacketType(this._buffer) >= PacketType.numPackets) {
+    const msg = this._msgQueue.pop();
+    if (PacketFactory.peekPacketType(msg.data) >= PacketType.numPackets) {
       return Errors.invalidPacket;
     }
-
-    this._recvHandlerFn({
-      data: this._buffer.subarray(0, n),
-      from,
-    });
+    this._recvHandlerFn(msg);
     return Errors.none;
   }
 
   private init() {
     this._isClosed = false;
+
     this._conn.setReadBuffer(this._recvSize);
     this._conn.setWriteBuffer(this._sendSize);
+    this._conn.onMessage(this.onMessage.bind(this));
   }
 
-  private _buffer: Uint8Array;
+  private onMessage(
+    message: Uint8Array,
+    messageSize: number,
+    remote: IUDPAddr
+  ) {
+    if (message && messageSize > 0 && messageSize <= this._maxBytes) {
+      this._msgQueue.push({
+        data: message.subarray(0, messageSize),
+        from: remote,
+      });
+    }
+  }
+
+  private _msgQueue: Queue<INetcodeData>;
   private _conn: IUDPConn;
   private _isClosed: boolean;
   private _maxBytes: number;
