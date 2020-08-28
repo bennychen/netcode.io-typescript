@@ -46,12 +46,12 @@ export class SharedTokenData {
 
       let ipBytes: Uint8Array;
       let isIPV6: boolean = false;
-      if (serverType === Defines.AddressType.ADDRESS_IPV4) {
+      if (serverType === Defines.AddressType.ipv4) {
         ipBytes = buffer.readBytes(4);
         if (ipBytes === undefined) {
           return Errors.EOF;
         }
-      } else if (serverType === Defines.AddressType.ADDRESS_IPV6) {
+      } else if (serverType === Defines.AddressType.ipv6) {
         ipBytes = new Uint8Array(16);
         for (let j = 0; j < 16; j += 2) {
           const n = buffer.readUint16();
@@ -96,7 +96,7 @@ export class SharedTokenData {
 
     for (const addr of this.serverAddrs) {
       if (addr.isIPV6) {
-        buffer.writeUint8(Defines.AddressType.ADDRESS_IPV6);
+        buffer.writeUint8(Defines.AddressType.ipv6);
         for (let i = 0; i < addr.ip.length; i += 2) {
           let n = (0xffff & addr.ip[i]) << 8;
           n |= 0xffff & addr.ip[i + 1];
@@ -104,7 +104,7 @@ export class SharedTokenData {
           buffer.writeUint16(n);
         }
       } else {
-        buffer.writeUint8(Defines.AddressType.ADDRESS_IPV4);
+        buffer.writeUint8(Defines.AddressType.ipv4);
         buffer.writeBytes(addr.ip);
       }
       buffer.writeUint16(addr.port);

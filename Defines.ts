@@ -33,9 +33,9 @@ export const CONNECT_TOKEN_BYTES = 2048;
 export const PACKET_QUEUE_SIZE = 256;
 
 export enum AddressType {
-  ADDRESS_NONE,
-  ADDRESS_IPV4,
-  ADDRESS_IPV6,
+  none,
+  ipv4,
+  ipv6,
 }
 
 export interface INetcodeData {

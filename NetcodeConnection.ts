@@ -100,10 +100,7 @@ export class NetcodeConn {
       return Errors.overMaxReadSize;
     }
 
-    if (
-      PacketFactory.peekPacketType(this._buffer) >=
-      PacketType.ConnectionNumPackets
-    ) {
+    if (PacketFactory.peekPacketType(this._buffer) >= PacketType.numPackets) {
       return Errors.invalidPacket;
     }
 

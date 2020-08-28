@@ -159,7 +159,7 @@ describe('Test Packet', function () {
       packetKey
     );
     assert.equal(bytesWritten > 0, true);
-    var allowedPackets = new Uint8Array(PacketType.ConnectionNumPackets);
+    var allowedPackets = new Uint8Array(PacketType.numPackets);
     for (let i = 0; i < allowedPackets.length; i++) {
       allowedPackets[i] = 1;
     }
@@ -205,7 +205,7 @@ describe('Test Packet', function () {
       packetKey
     );
     assert.equal(bytesWritten > 0, true);
-    var allowedPackets = new Uint8Array(PacketType.ConnectionNumPackets);
+    var allowedPackets = new Uint8Array(PacketType.numPackets);
     for (let i = 0; i < allowedPackets.length; i++) {
       allowedPackets[i] = 1;
     }
@@ -226,7 +226,7 @@ describe('Test Packet', function () {
   it('test challenge packet', function () {
     var inputPacket = new ChallengePacket();
     inputPacket.setProperties(
-      0,
+      Long.ZERO,
       Utils.getRandomBytes(Defines.CHALLENGE_TOKEN_BYTES)
     );
     var buffer = new Uint8Array(Defines.MAX_PACKET_BYTES);
@@ -238,7 +238,7 @@ describe('Test Packet', function () {
       packetKey
     );
     assert.equal(bytesWritten > 0, true);
-    var allowedPackets = new Uint8Array(PacketType.ConnectionNumPackets);
+    var allowedPackets = new Uint8Array(PacketType.numPackets);
     for (let i = 0; i < allowedPackets.length; i++) {
       allowedPackets[i] = 1;
     }
@@ -255,8 +255,8 @@ describe('Test Packet', function () {
     assert.equal(err === Errors.none, true, 'oh no');
     assert.equal(outP.sequence().equals(TEST_SEQUENCE_START), true);
     assert.equal(
-      outP.challengeTokenSequence,
-      inputPacket.challengeTokenSequence
+      outP.challengeTokenSequence.equals(inputPacket.challengeTokenSequence),
+      true
     );
     assertBytesEqual(outP.tokenData, inputPacket.tokenData, 'oh no');
   });
@@ -264,7 +264,7 @@ describe('Test Packet', function () {
   it('test connection response packet', function () {
     var inputPacket = new ResponsePacket();
     inputPacket.setProperties(
-      0,
+      Long.ZERO,
       Utils.getRandomBytes(Defines.CHALLENGE_TOKEN_BYTES)
     );
     var buffer = new Uint8Array(Defines.MAX_PACKET_BYTES);
@@ -276,7 +276,7 @@ describe('Test Packet', function () {
       packetKey
     );
     assert.equal(bytesWritten > 0, true);
-    var allowedPackets = new Uint8Array(PacketType.ConnectionNumPackets);
+    var allowedPackets = new Uint8Array(PacketType.numPackets);
     for (let i = 0; i < allowedPackets.length; i++) {
       allowedPackets[i] = 1;
     }
@@ -293,8 +293,8 @@ describe('Test Packet', function () {
     assert.equal(err === Errors.none, true, 'oh no');
     assert.equal(outP.sequence().equals(TEST_SEQUENCE_START), true);
     assert.equal(
-      outP.challengeTokenSequence,
-      inputPacket.challengeTokenSequence
+      outP.challengeTokenSequence.equals(inputPacket.challengeTokenSequence),
+      true
     );
     assertBytesEqual(outP.tokenData, inputPacket.tokenData, 'oh no');
   });
@@ -311,7 +311,7 @@ describe('Test Packet', function () {
       packetKey
     );
     assert.equal(bytesWritten > 0, true);
-    var allowedPackets = new Uint8Array(PacketType.ConnectionNumPackets);
+    var allowedPackets = new Uint8Array(PacketType.numPackets);
     for (let i = 0; i < allowedPackets.length; i++) {
       allowedPackets[i] = 1;
     }
@@ -343,7 +343,7 @@ describe('Test Packet', function () {
       packetKey
     );
     assert.equal(bytesWritten > 0, true);
-    var allowedPackets = new Uint8Array(PacketType.ConnectionNumPackets);
+    var allowedPackets = new Uint8Array(PacketType.numPackets);
     for (let i = 0; i < allowedPackets.length; i++) {
       allowedPackets[i] = 1;
     }
@@ -368,7 +368,7 @@ describe('Test Packet', function () {
     var key = Utils.generateKey();
     var writeLen = p.write(buf, TEST_PROTOCOL_ID, TEST_SEQUENCE_START, key);
     assert.equal(writeLen, 3 + Defines.MAC_BYTES, 'oh no');
-    var allowedPackets = new Uint8Array(PacketType.ConnectionNumPackets);
+    var allowedPackets = new Uint8Array(PacketType.numPackets);
     for (let i = 0; i < allowedPackets.length; i++) {
       allowedPackets[i] = 1;
     }

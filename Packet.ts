@@ -7,15 +7,15 @@ import { ReplayProtection } from './ReplayProtection';
 import * as chacha from './chacha20poly1305';
 
 export enum PacketType {
-  ConnectionRequest,
-  ConnectionDenied,
-  ConnectionChallenge,
-  ConnectionResponse,
-  ConnectionKeepAlive,
-  ConnectionPayload,
-  ConnectionDisconnect,
+  connectionRequest,
+  connectionDenied,
+  connectionChallenge,
+  connectionResponse,
+  connectionKeepAlive,
+  connectionPayload,
+  connectionDisconnect,
 
-  ConnectionNumPackets,
+  numPackets,
 }
 
 export interface IReadParams {
@@ -91,7 +91,7 @@ export class PacketFactory {
   public static create(packetBuffer: Uint8Array): IPacket {
     const packetType = this.peekPacketType(packetBuffer);
     switch (packetType) {
-      case PacketType.ConnectionRequest:
+      case PacketType.connectionRequest:
         return new RequestPacket();
       default:
         return null;
@@ -101,7 +101,7 @@ export class PacketFactory {
 
 export class RequestPacket implements IPacket {
   public getType(): PacketType {
-    return PacketType.ConnectionRequest;
+    return PacketType.connectionRequest;
   }
 
   public sequence(): Long {
@@ -129,7 +129,7 @@ export class RequestPacket implements IPacket {
     writePacketKey: Uint8Array
   ): number {
     const bb = new ByteBuffer(buf);
-    bb.writeUint8(PacketType.ConnectionRequest);
+    bb.writeUint8(PacketType.connectionRequest);
     bb.writeBytes(this._versionInfo);
     bb.writeUint64(this._protocolID);
     bb.writeUint64(this._connectTokenExpireTimestamp);
@@ -153,7 +153,7 @@ export class RequestPacket implements IPacket {
     const packetType = bb.readUint8();
     if (
       packetType === undefined ||
-      packetType !== PacketType.ConnectionRequest
+      packetType !== PacketType.connectionRequest
     ) {
       return Errors.invalidPacket;
     }
@@ -243,7 +243,7 @@ export class RequestPacket implements IPacket {
 
 export class DeniedPacket implements IPacket {
   public getType(): PacketType {
-    return PacketType.ConnectionDenied;
+    return PacketType.connectionDenied;
   }
 
   public sequence(): Long {
@@ -302,14 +302,14 @@ export class DeniedPacket implements IPacket {
 
 export class ChallengePacket implements IPacket {
   public getType(): PacketType {
-    return PacketType.ConnectionChallenge;
+    return PacketType.connectionChallenge;
   }
 
   public sequence(): Long {
     return this._sequence;
   }
 
-  public get challengeTokenSequence(): number {
+  public get challengeTokenSequence(): Long {
     return this._challengeTokenSequence;
   }
 
@@ -317,7 +317,7 @@ export class ChallengePacket implements IPacket {
     return this._tokenData;
   }
 
-  public setProperties(tokenSequence: number, tokenData: Uint8Array) {
+  public setProperties(tokenSequence: Long, tokenData: Uint8Array) {
     this._challengeTokenSequence = tokenSequence;
     this._tokenData = tokenData;
   }
@@ -335,7 +335,7 @@ export class ChallengePacket implements IPacket {
     }
 
     const start = bb.position;
-    bb.writeUint64(Long.fromNumber(this._challengeTokenSequence));
+    bb.writeUint64(this._challengeTokenSequence);
     bb.writeBytes(this._tokenData, Defines.CHALLENGE_TOKEN_BYTES);
     const end = bb.position;
     return PacketHelper.encryptPacket(
@@ -371,11 +371,10 @@ export class ChallengePacket implements IPacket {
       return Errors.invalidChallengePacketDataSize;
     }
 
-    const challengeTokenSequence = decrypted.readUint64();
-    if (challengeTokenSequence === undefined) {
-      return Errors.invalidChallengeTokenSequence;
+    this._challengeTokenSequence = decrypted.readUint64();
+    if (this._challengeTokenSequence === undefined) {
+      return Errors.invalidResponseTokenSequence;
     }
-    this._challengeTokenSequence = challengeTokenSequence.toNumber();
 
     this._tokenData = decrypted.readBytes(Defines.CHALLENGE_TOKEN_BYTES);
     if (this._tokenData === undefined) {
@@ -385,20 +384,20 @@ export class ChallengePacket implements IPacket {
   }
 
   private _sequence: Long;
-  private _challengeTokenSequence: number;
+  private _challengeTokenSequence: Long;
   private _tokenData: Uint8Array;
 }
 
 export class ResponsePacket implements IPacket {
   public getType(): PacketType {
-    return PacketType.ConnectionResponse;
+    return PacketType.connectionResponse;
   }
 
   public sequence(): Long {
     return this._sequence;
   }
 
-  public get challengeTokenSequence(): number {
+  public get challengeTokenSequence(): Long {
     return this._challengeTokenSequence;
   }
 
@@ -406,7 +405,7 @@ export class ResponsePacket implements IPacket {
     return this._tokenData;
   }
 
-  public setProperties(tokenSequence: number, tokenData: Uint8Array) {
+  public setProperties(tokenSequence: Long, tokenData: Uint8Array) {
     this._challengeTokenSequence = tokenSequence;
     this._tokenData = tokenData;
   }
@@ -424,7 +423,7 @@ export class ResponsePacket implements IPacket {
     }
 
     const start = bb.position;
-    bb.writeUint64(Long.fromNumber(this._challengeTokenSequence));
+    bb.writeUint64(this._challengeTokenSequence);
     bb.writeBytes(this._tokenData, Defines.CHALLENGE_TOKEN_BYTES);
     const end = bb.position;
     return PacketHelper.encryptPacket(
@@ -460,11 +459,10 @@ export class ResponsePacket implements IPacket {
       return Errors.invalidResponsePacketDataSize;
     }
 
-    const challengeTokenSequence = decrypted.readUint64();
-    if (challengeTokenSequence === undefined) {
+    this._challengeTokenSequence = decrypted.readUint64();
+    if (this._challengeTokenSequence === undefined) {
       return Errors.invalidResponseTokenSequence;
     }
-    this._challengeTokenSequence = challengeTokenSequence.toNumber();
 
     this._tokenData = decrypted.readBytes(Defines.CHALLENGE_TOKEN_BYTES);
     if (this._tokenData === undefined) {
@@ -474,13 +472,13 @@ export class ResponsePacket implements IPacket {
   }
 
   private _sequence: Long;
-  private _challengeTokenSequence: number;
+  private _challengeTokenSequence: Long;
   private _tokenData: Uint8Array;
 }
 
 export class KeepAlivePacket implements IPacket {
   public getType(): PacketType {
-    return PacketType.ConnectionKeepAlive;
+    return PacketType.connectionKeepAlive;
   }
 
   public sequence(): Long {
@@ -568,7 +566,7 @@ export class KeepAlivePacket implements IPacket {
 
 export class PayloadPacket implements IPacket {
   public getType(): PacketType {
-    return PacketType.ConnectionPayload;
+    return PacketType.connectionPayload;
   }
 
   public sequence(): Long {
@@ -648,7 +646,7 @@ export class PayloadPacket implements IPacket {
 
 export class DisconnectPacket implements IPacket {
   public getType(): PacketType {
-    return PacketType.ConnectionDisconnect;
+    return PacketType.connectionDisconnect;
   }
 
   public sequence(): Long {
@@ -883,7 +881,7 @@ export class PacketHelper {
     }
 
     const packetType: PacketType = prefixByte & 0xf;
-    if (packetType >= PacketType.ConnectionNumPackets) {
+    if (packetType >= PacketType.numPackets) {
       return Errors.invalidPacket;
     }
 
@@ -892,7 +890,7 @@ export class PacketHelper {
     }
 
     // replay protection (optional)
-    if (replayProtection && packetType >= PacketType.ConnectionKeepAlive) {
+    if (replayProtection && packetType >= PacketType.connectionKeepAlive) {
       if (replayProtection.checkAlreadyReceived(sequence.toNumber())) {
         return Errors.packetAlreadyReceived;
       }
