@@ -289,7 +289,7 @@ namespace NetcodeIO {
         return false;
       }
       this._lastPacketSendTime = this._time;
-      this._sequence++;
+      this._sequence.plusOne();
       return true;
     }
 
@@ -356,7 +356,7 @@ namespace NetcodeIO {
     }
 
     private resetConectionData(newState: ClientState) {
-      this._sequence = 0;
+      this._sequence.setZero();
       this._clientIndex = 0;
       this._maxClients = 0;
       this._startTime = 0;
@@ -387,7 +387,7 @@ namespace NetcodeIO {
     private _shouldDisconnect: boolean;
     private _shouldDisconnectState: ClientState;
 
-    private _sequence: number;
+    private _sequence: Long = new Long(0, 0);
     private _challenTokenData: Uint8Array;
     private _challengeSequence: Long;
     private _allowedPackets: Uint8Array;

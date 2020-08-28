@@ -1,13 +1,10 @@
 export class Long {
   public static readonly ZERO = new Long(0, 0);
 
-  public static create(low: number, high: number): Long {
-    // Special-case zero to avoid GC overhead for default values
-    return low == 0 && high == 0 ? Long.ZERO : new Long(low, high);
-  }
-
   public static fromNumber(value: number): Long {
-    if (value === 0) return Long.ZERO;
+    if (value === 0) {
+      return new Long(0, 0);
+    }
     var sign = value < 0;
     if (sign) value = -value;
     var lo = value >>> 0,
@@ -31,6 +28,14 @@ export class Long {
     return this._high;
   }
 
+  public set low(value: number) {
+    this._low = value;
+  }
+
+  public set high(value: number) {
+    this._high = value;
+  }
+
   public constructor(low: number, high: number) {
     this._low = low | 0;
     this._high = high | 0;
@@ -42,6 +47,59 @@ export class Long {
 
   public equals(other: Long) {
     return this._low == other._low && this._high == other._high;
+  }
+
+  public plusOne() {
+    if (this._low === 0xffffffff) {
+      this._low = 0;
+      this._high++;
+    } else {
+      this._low++;
+    }
+  }
+
+  public leftShiftSelf(s: number) {
+    const { low, high } = this.leftShift(s);
+    this._low = low;
+    this._high = high;
+  }
+
+  public leftShift(s: number): { low: number; high: number } {
+    if (s === 0 || s >= 64) {
+      return { high: this._high, low: this._low };
+    } else if (s < 32) {
+      return {
+        high: (this._low >>> (32 - s)) | (this._high << s),
+        low: (this._low << s) | 0,
+      };
+    } else if (s < 64) {
+      return {
+        high: (this._low << (s - 32)) | 0,
+        low: 0,
+      };
+    }
+  }
+
+  public rightShiftSelf(s: number) {
+    const { low, high } = this.rightShift(s);
+    this._low = low;
+    this._high = high;
+  }
+
+  public rightShift(s: number): { low: number; high: number } {
+    if (s === 0 || s >= 64) {
+      return { high: this._high, low: this._low };
+    } else if (s < 32) {
+      return {
+        high: (this._high >>> s) | 0,
+        low: (this._high << (32 - s)) | (this._low >>> s),
+      };
+    } else if (s < 64) {
+      return {
+        high: 0,
+        low: (this._high >>> (s - 32)) | 0,
+      };
+    }
   }
 
   public setZero() {

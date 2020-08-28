@@ -22,6 +22,7 @@ export enum Errors {
   badExpireTimestamp,
   packetInvalidLength,
   decryptPrivateTokenData,
+  readPrivateTokenData,
   badSequence,
   badPrivateData,
   badUserData,

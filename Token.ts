@@ -248,7 +248,7 @@ export class ConnectTokenPrivate {
     privateKey: Uint8Array
   ): Uint8Array {
     if (this.tokenData.bytes.length !== Defines.CONNECT_TOKEN_PRIVATE_BYTES) {
-      console.error('wrong token data length');
+      console.error('wrong connect private token data length');
       return;
     }
     this.mac.set(
@@ -275,6 +275,7 @@ export class ConnectTokenPrivate {
     if (decrypted) {
       this.tokenData = new ByteBuffer(decrypted);
     } else {
+      console.error('decrypted connect private token failed');
       return;
     }
     this.tokenData.clearPosition();
@@ -302,7 +303,7 @@ export class ConnectToken {
     protocoalID: Long,
     expireSeconds: number,
     timeoutSeconds: number,
-    sequence: number,
+    sequence: Long,
     userData: Uint8Array,
     privateKey: Uint8Array
   ): boolean {
@@ -316,7 +317,7 @@ export class ConnectToken {
     this.sharedTokenData.timeoutSeconds = timeoutSeconds;
     this.versionInfo = new Uint8Array(Defines.VERSION_INFO_BYTES_ARRAY);
     this.protocolID = protocoalID;
-    this.sequence = Long.fromNumber(sequence);
+    this.sequence = new Long(sequence.low, sequence.high);
 
     this.privateData = ConnectTokenPrivate.create(
       clientID,

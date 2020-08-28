@@ -29,11 +29,11 @@ export interface IReadParams {
 
 export interface IPacket {
   getType(): PacketType;
-  sequence(): number;
+  sequence(): Long;
   write(
     buf: Uint8Array,
     protocolID: Long,
-    sequence: number,
+    sequence: Long,
     writePacketKey: Uint8Array
   ): number;
   read(
@@ -104,8 +104,8 @@ export class RequestPacket implements IPacket {
     return PacketType.ConnectionRequest;
   }
 
-  public sequence(): number {
-    return 0;
+  public sequence(): Long {
+    return new Long(0, 0);
   }
 
   public setProperties(
@@ -125,7 +125,7 @@ export class RequestPacket implements IPacket {
   public write(
     buf: Uint8Array,
     protocolID: Long,
-    sequence: number,
+    sequence: Long,
     writePacketKey: Uint8Array
   ): number {
     const bb = new ByteBuffer(buf);
@@ -135,10 +135,10 @@ export class RequestPacket implements IPacket {
     bb.writeUint64(this._connectTokenExpireTimestamp);
     bb.writeUint64(this._connectTokenSequence);
     bb.writeBytes(this._connectTokenData);
-    if (
-      bb.position !==
-      1 + 13 + 8 + 8 + 8 + Defines.CONNECT_TOKEN_PRIVATE_BYTES
-    ) {
+    const correctPosition =
+      1 + 13 + 8 + 8 + 8 + Defines.CONNECT_TOKEN_PRIVATE_BYTES;
+    if (bb.position !== correctPosition) {
+      console.error('wrong token bytes length', bb.position, correctPosition);
       return -1;
     }
     return bb.position;
@@ -225,9 +225,9 @@ export class RequestPacket implements IPacket {
     ) {
       return Errors.decryptPrivateTokenData;
     }
-
-    if (!this._token.read()) {
-      return Errors.decryptPrivateTokenData;
+    const err = this._token.read();
+    if (err !== Errors.none) {
+      return err;
     }
 
     return Errors.none;
@@ -246,14 +246,14 @@ export class DeniedPacket implements IPacket {
     return PacketType.ConnectionDenied;
   }
 
-  public sequence(): number {
+  public sequence(): Long {
     return this._sequence;
   }
 
   public write(
     buf: Uint8Array,
     protocolID: Long,
-    sequence: number,
+    sequence: Long,
     writePacketKey: Uint8Array
   ): number {
     const bb = new ByteBuffer(buf);
@@ -262,7 +262,7 @@ export class DeniedPacket implements IPacket {
       return -1;
     }
 
-    return PacketHelper.encrypt(
+    return PacketHelper.encryptPacket(
       bb,
       bb.position,
       bb.position,
@@ -297,7 +297,7 @@ export class DeniedPacket implements IPacket {
     return Errors.none;
   }
 
-  private _sequence: number;
+  private _sequence: Long;
 }
 
 export class ChallengePacket implements IPacket {
@@ -305,14 +305,27 @@ export class ChallengePacket implements IPacket {
     return PacketType.ConnectionChallenge;
   }
 
-  public sequence(): number {
+  public sequence(): Long {
     return this._sequence;
+  }
+
+  public get challengeTokenSequence(): number {
+    return this._challengeTokenSequence;
+  }
+
+  public get tokenData(): Uint8Array {
+    return this._tokenData;
+  }
+
+  public setProperties(tokenSequence: number, tokenData: Uint8Array) {
+    this._challengeTokenSequence = tokenSequence;
+    this._tokenData = tokenData;
   }
 
   public write(
     buf: Uint8Array,
     protocolID: Long,
-    sequence: number,
+    sequence: Long,
     writePacketKey: Uint8Array
   ): number {
     const bb = new ByteBuffer(buf);
@@ -325,7 +338,7 @@ export class ChallengePacket implements IPacket {
     bb.writeUint64(Long.fromNumber(this._challengeTokenSequence));
     bb.writeBytes(this._tokenData, Defines.CHALLENGE_TOKEN_BYTES);
     const end = bb.position;
-    return PacketHelper.encrypt(
+    return PacketHelper.encryptPacket(
       bb,
       start,
       end,
@@ -371,7 +384,7 @@ export class ChallengePacket implements IPacket {
     return Errors.none;
   }
 
-  private _sequence: number;
+  private _sequence: Long;
   private _challengeTokenSequence: number;
   private _tokenData: Uint8Array;
 }
@@ -381,14 +394,27 @@ export class ResponsePacket implements IPacket {
     return PacketType.ConnectionResponse;
   }
 
-  public sequence(): number {
+  public sequence(): Long {
     return this._sequence;
+  }
+
+  public get challengeTokenSequence(): number {
+    return this._challengeTokenSequence;
+  }
+
+  public get tokenData(): Uint8Array {
+    return this._tokenData;
+  }
+
+  public setProperties(tokenSequence: number, tokenData: Uint8Array) {
+    this._challengeTokenSequence = tokenSequence;
+    this._tokenData = tokenData;
   }
 
   public write(
     buf: Uint8Array,
     protocolID: Long,
-    sequence: number,
+    sequence: Long,
     writePacketKey: Uint8Array
   ): number {
     const bb = new ByteBuffer(buf);
@@ -401,7 +427,7 @@ export class ResponsePacket implements IPacket {
     bb.writeUint64(Long.fromNumber(this._challengeTokenSequence));
     bb.writeBytes(this._tokenData, Defines.CHALLENGE_TOKEN_BYTES);
     const end = bb.position;
-    return PacketHelper.encrypt(
+    return PacketHelper.encryptPacket(
       bb,
       start,
       end,
@@ -447,7 +473,7 @@ export class ResponsePacket implements IPacket {
     return Errors.none;
   }
 
-  private _sequence: number;
+  private _sequence: Long;
   private _challengeTokenSequence: number;
   private _tokenData: Uint8Array;
 }
@@ -457,14 +483,27 @@ export class KeepAlivePacket implements IPacket {
     return PacketType.ConnectionKeepAlive;
   }
 
-  public sequence(): number {
+  public sequence(): Long {
     return this._sequence;
+  }
+
+  public get clientIndex(): number {
+    return this._clientIndex;
+  }
+
+  public get maxClients(): number {
+    return this._maxClients;
+  }
+
+  public setProperties(clientIndex: number, maxClients: number) {
+    this._clientIndex = clientIndex;
+    this._maxClients = maxClients;
   }
 
   public write(
     buf: Uint8Array,
     protocolID: Long,
-    sequence: number,
+    sequence: Long,
     writePacketKey: Uint8Array
   ): number {
     const bb = new ByteBuffer(buf);
@@ -477,7 +516,7 @@ export class KeepAlivePacket implements IPacket {
     bb.writeUint32(this._clientIndex);
     bb.writeUint32(this._maxClients);
     const end = bb.position;
-    return PacketHelper.encrypt(
+    return PacketHelper.encryptPacket(
       bb,
       start,
       end,
@@ -522,7 +561,7 @@ export class KeepAlivePacket implements IPacket {
     return Errors.none;
   }
 
-  private _sequence: number;
+  private _sequence: Long;
   private _clientIndex: number;
   private _maxClients: number;
 }
@@ -532,18 +571,24 @@ export class PayloadPacket implements IPacket {
     return PacketType.ConnectionPayload;
   }
 
-  public sequence(): number {
+  public sequence(): Long {
     return this._sequence;
   }
 
-  public constructor(payloadData: Uint8Array) {
-    this._payloadData = payloadData;
+  public get payloadData(): Uint8Array {
+    return this._payloadData;
+  }
+
+  public constructor(payloadData?: Uint8Array) {
+    if (payloadData) {
+      this._payloadData = payloadData;
+    }
   }
 
   public write(
     buf: Uint8Array,
     protocolID: Long,
-    sequence: number,
+    sequence: Long,
     writePacketKey: Uint8Array
   ): number {
     const bb = new ByteBuffer(buf);
@@ -555,7 +600,7 @@ export class PayloadPacket implements IPacket {
     const start = bb.position;
     bb.writeBytes(this._payloadData);
     const end = bb.position;
-    return PacketHelper.encrypt(
+    return PacketHelper.encryptPacket(
       bb,
       start,
       end,
@@ -584,9 +629,6 @@ export class PayloadPacket implements IPacket {
       return err;
     }
     this._sequence = sequence;
-    if (decrypted.bytes.length !== 8) {
-      return Errors.invalidDisconnectPacketDataSize;
-    }
 
     const decryptedSize = decrypted.bytes.length;
     if (decryptedSize < 1) {
@@ -600,7 +642,7 @@ export class PayloadPacket implements IPacket {
     return Errors.none;
   }
 
-  private _sequence: number;
+  private _sequence: Long;
   private _payloadData: Uint8Array;
 }
 
@@ -609,14 +651,14 @@ export class DisconnectPacket implements IPacket {
     return PacketType.ConnectionDisconnect;
   }
 
-  public sequence(): number {
+  public sequence(): Long {
     return this._sequence;
   }
 
   public write(
     buf: Uint8Array,
     protocolID: Long,
-    sequence: number,
+    sequence: Long,
     writePacketKey: Uint8Array
   ): number {
     const bb = new ByteBuffer(buf);
@@ -624,7 +666,7 @@ export class DisconnectPacket implements IPacket {
     if (prefixByte < 0) {
       return -1;
     }
-    return PacketHelper.encrypt(
+    return PacketHelper.encryptPacket(
       bb,
       bb.position,
       bb.position,
@@ -659,18 +701,18 @@ export class DisconnectPacket implements IPacket {
     return Errors.none;
   }
 
-  private _sequence: number;
+  private _sequence: Long;
 }
 
-class PacketHelper {
+export class PacketHelper {
   // Encrypts the packet data of the supplied buffer between encryptedStart and encrypedFinish.
-  public static encrypt(
+  public static encryptPacket(
     buffer: ByteBuffer,
     encryptedStart: number,
     encryptedFinish: number,
     prefixByte: number,
     protocolId: Long,
-    sequence: number,
+    sequence: Long,
     writePacketKey: Uint8Array
   ) {
     // slice up the buffer for the bits we will encrypt
@@ -690,18 +732,18 @@ class PacketHelper {
       encryptedBuffer,
       additionalData
     );
-    buffer.bytes.set(encrypted[0], 0);
-    buffer.bytes.set(encrypted[1], encrypted[0].length);
+    buffer.bytes.set(encrypted[0], encryptedStart);
+    buffer.bytes.set(encrypted[1], encryptedFinish);
     buffer.skipPosition(Defines.MAC_BYTES);
     return buffer.position;
   }
 
   // used for encrypting the per-packet packet written with the prefix byte,
   // protocol id and version as the associated data. this must match to decrypt.
-  private static packetCryptData(
+  public static packetCryptData(
     prefixByte: number,
     protocolId: Long,
-    sequence: number
+    sequence: Long
   ): { additionalData: Uint8Array; nonce: Uint8Array } {
     if (!this._addtionalDatabuffer) {
       this._addtionalDatabuffer = ByteBuffer.allocate(
@@ -720,7 +762,7 @@ class PacketHelper {
     const nonce = this._nonceBuffer;
     nonce.clearPosition();
     nonce.writeUint32(0);
-    nonce.writeUint64(Long.fromNumber(sequence));
+    nonce.writeUint64(sequence);
     return { additionalData: additionalData.bytes, nonce: nonce.bytes };
   }
 
@@ -732,10 +774,10 @@ class PacketHelper {
     readPacketKey: Uint8Array,
     allowedPackets: Uint8Array,
     replayProtection: ReplayProtection
-  ): { sequence: number; decrypted?: ByteBuffer; err: Errors } {
+  ): { sequence?: Long; decrypted?: ByteBuffer; err: Errors } {
     const prefixByte = packetBuffer.readUint8();
     if (prefixByte === undefined) {
-      return { sequence: 0, err: Errors.invalidPacket };
+      return { err: Errors.invalidPacket };
     }
 
     const packetSequence = this.readSequence(
@@ -743,8 +785,8 @@ class PacketHelper {
       packetLen,
       prefixByte
     );
-    if (packetSequence === 0) {
-      return { sequence: 0, err: Errors.badSequence };
+    if (!packetSequence) {
+      return { err: Errors.badSequence };
     }
 
     const err = this.validateSequence(
@@ -756,7 +798,7 @@ class PacketHelper {
       replayProtection
     );
     if (err !== Errors.none) {
-      return { sequence: 0, err };
+      return { err };
     }
 
     // decrypt the per-packet type data
@@ -768,26 +810,23 @@ class PacketHelper {
 
     const encryptedSize = packetLen - packetBuffer.position;
     if (encryptedSize < Defines.MAC_BYTES) {
-      return { sequence: 0, err: Errors.badPacketLength };
+      return { err: Errors.badPacketLength };
     }
 
     const encryptedBuff = packetBuffer.readBytes(encryptedSize);
     if (encryptedBuff === undefined) {
-      return { sequence: 0, err: Errors.badPacketLength };
+      return { err: Errors.badPacketLength };
     }
 
     const decrypted = chacha.aead_decrypt(
       readPacketKey,
       nonce,
-      encryptedBuff.subarray(
-        0,
-        Defines.CHALLENGE_TOKEN_BYTES - Defines.MAC_BYTES
-      ),
+      encryptedBuff.subarray(0, encryptedBuff.length - Defines.MAC_BYTES),
       additionalData,
-      encryptedBuff.subarray(Defines.CHALLENGE_TOKEN_BYTES - Defines.MAC_BYTES)
+      encryptedBuff.subarray(encryptedBuff.length - Defines.MAC_BYTES)
     );
     if (!decrypted) {
-      return { sequence: 0, err: Errors.errDecryptData };
+      return { err: Errors.errDecryptData };
     }
     return {
       sequence: packetSequence,
@@ -801,33 +840,36 @@ class PacketHelper {
     packetBuffer: ByteBuffer,
     packetLen: number,
     prefixByte: number
-  ): number {
-    let sequence: number = 0;
+  ): Long | undefined {
     const sequenceBytes = prefixByte >> 4;
     if (sequenceBytes < 1 || sequenceBytes > 8) {
-      return 0;
+      return;
     }
-
     if (packetLen < 1 + sequenceBytes + Defines.MAC_BYTES) {
-      return 0;
+      return;
     }
 
+    let sequence: Long = new Long(0, 0);
     // read variable length sequence number [1,8]
     for (let i = 0; i < sequenceBytes; i += 1) {
       const val = packetBuffer.readUint8();
       if (val === undefined) {
-        return 0;
+        return;
       }
-      sequence |= val << (8 * i);
+      if (i <= 3) {
+        sequence.low |= val << (8 * i);
+      } else {
+        sequence.high |= val << (8 * (i - 4));
+      }
     }
     return sequence;
   }
 
   // Validates the data prior to the encrypted segment before we bother attempting to decrypt.
-  private static validateSequence(
+  public static validateSequence(
     packetLen: number,
     prefixByte: number,
-    sequence: number,
+    sequence: Long,
     readPacketKey: Uint8Array,
     allowedPackets: Uint8Array,
     replayProtection: ReplayProtection
@@ -851,7 +893,7 @@ class PacketHelper {
 
     // replay protection (optional)
     if (replayProtection && packetType >= PacketType.ConnectionKeepAlive) {
-      if (replayProtection.checkAlreadyReceived(sequence)) {
+      if (replayProtection.checkAlreadyReceived(sequence.toNumber())) {
         return Errors.packetAlreadyReceived;
       }
     }
@@ -863,7 +905,7 @@ class PacketHelper {
   public static writePacketPrefix(
     p: IPacket,
     buffer: ByteBuffer,
-    sequence: number
+    sequence: Long
   ): number {
     const sequenceBytes = this.sequenceNumberBytesRequired(sequence);
     if (sequenceBytes < 1 || sequenceBytes > 8) {
@@ -873,27 +915,34 @@ class PacketHelper {
     const prefixByte = p.getType() | (0xff & (sequenceBytes << 4));
     buffer.writeUint8(prefixByte);
 
-    let sequenceTemp = sequence;
+    this._sequenceTemp.low = sequence.low;
+    this._sequenceTemp.high = sequence.high;
     for (let i = 0; i < sequenceBytes; i += 1) {
-      buffer.writeUint8(sequenceTemp & 0xff);
-      sequenceTemp >>= 8;
+      buffer.writeUint8(this._sequenceTemp.low & 0xff);
+      this._sequenceTemp.rightShiftSelf(8);
     }
     return prefixByte;
   }
 
   // Depending on size of sequence number, we need to reserve N bytes
-  private static sequenceNumberBytesRequired(sequence: number): number {
-    let mask = 0xff00000000000000;
+  public static sequenceNumberBytesRequired(sequence: Long): number {
+    this._mask.high = 0xff000000;
+    this._mask.low = 0;
     let i = 0;
     for (; i < 7; i += 1) {
-      if ((sequence & mask) !== 0) {
+      if (
+        (sequence.high & this._mask.high) !== 0 ||
+        (sequence.low & this._mask.low) !== 0
+      ) {
         break;
       }
-      mask >>= 8;
+      this._mask.rightShiftSelf(8);
     }
     return 8 - i;
   }
 
+  private static _sequenceTemp: Long = new Long(0, 0);
+  private static _mask: Long = new Long(0, 0);
   private static _addtionalDatabuffer: ByteBuffer;
   private static _nonceBuffer: ByteBuffer;
 }
