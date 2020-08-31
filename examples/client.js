@@ -14,6 +14,7 @@ class NodeUDPConn {
   connect(addr) {
     var ipAddr = ipaddr.fromByteArray(addr.ip);
     var ip = ipAddr.toString();
+    // var ip = Utils.IPV4AddressToString(addr);
     console.log('ip address', ip);
     this._socket.connect(addr.port, ip);
   }
@@ -56,6 +57,7 @@ class NodeUDPConn {
         addr = this._strAddressToBytes[fullAddr] = new Uint8Array(
           ipAddr.toByteArray()
         );
+        // addr = this._strAddressToBytes[fullAddr] = Utils.stringToIPV4Address(fullAddr);
       }
       callback(msg, addr);
     });
