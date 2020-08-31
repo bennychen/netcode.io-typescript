@@ -51,20 +51,8 @@ function assertBytesEqual(a1, a2, str) {
 }
 
 function ipStringToBytes(ip) {
-  var octets = ip.split('.');
-  if (octets.length !== 4) {
-    console.error('only support ipv4');
-    return;
-  }
-  const bytes = new Uint8Array(4);
-  for (var i = 0; i < octets.length; ++i) {
-    var octet = parseInt(octets[i], 10);
-    if (Number.isNaN(octet) || octet < 0 || octet > 255) {
-      throw new Error('Each octet must be between 0 and 255');
-    }
-    bytes[i] = octet;
-  }
-  return bytes;
+  var addr = Utils.stringToIPV4Address(ip);
+  return addr.ip;
 }
 
 describe('ConnectToken tests', function () {

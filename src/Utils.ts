@@ -39,7 +39,7 @@ export class Utils {
     return true;
   }
 
-  public static stringToAddress(ip: string): Defines.IUDPAddr {
+  public static stringToIPV4Address(ip: string): Defines.IUDPAddr {
     const ipAndPort = ip.split(':');
     let port = 0;
     if (ipAndPort.length == 2) {
@@ -64,10 +64,19 @@ export class Utils {
     return { ip: bytes, isIPV6: false, port };
   }
 
-  public static addressToIPString(address: Defines.IUDPAddr): string {
+  public static IPV4AddressToString(
+    address: Defines.IUDPAddr,
+    appendPort?: boolean
+  ): string {
     if (address.isIPV6) {
+      console.error('only support ipv4');
+      return '';
     } else {
-      return `${address.ip[0]}.${address.ip[1]}.${address.ip[2]}.${address.ip[3]}`;
+      let str = `${address.ip[0]}.${address.ip[1]}.${address.ip[2]}.${address.ip[3]}`;
+      if (appendPort && address.port > 0) {
+        str += `:${address.port}`;
+      }
+      return str;
     }
   }
 }
@@ -76,6 +85,7 @@ export class Queue<T> {
   public constructor(capacity: number) {
     this._capacity = capacity;
     this._elements = new Array<T>(capacity);
+    this.clear();
   }
 
   public clear() {

@@ -15,7 +15,6 @@ import * as Defines from './Defines';
 import { Queue } from './Utils';
 import { ReplayProtection } from './ReplayProtection';
 import { Errors } from './Errors';
-import { Utils } from './Utils';
 import { INetcodeData, NetcodeConn, UDPConnCreator } from './NetcodeConnection';
 
 export enum ClientState {
@@ -95,14 +94,8 @@ export class Client {
     ];
 
     this._conn = new NetcodeConn();
-    this._conn.setRecvHandler(this.handleNetcodeData);
-    if (
-      !this._conn.dial(
-        dial,
-        Utils.addressToIPString(this._serverAddr),
-        this._serverAddr.port
-      )
-    ) {
+    this._conn.setRecvHandler(this.handleNetcodeData.bind(this));
+    if (!this._conn.dial(dial, this._serverAddr)) {
       return Errors.dialServer;
     }
 
@@ -151,6 +144,7 @@ export class Client {
     for (const p of this._receivedPackets) {
       this.onPacketData(p.data, p.from);
     }
+    this._receivedPackets = [];
     this.tickSend();
     const state = this._state;
     if (state > ClientState.disconnected && state < ClientState.connected) {
@@ -352,14 +346,20 @@ export class Client {
           this._state == ClientState.sendingConnectionRequest ||
           this._state == ClientState.sendingConnectionResponse
         ) {
+          this.debugLog(
+            `client ${this._id} got connection denied packet from server`
+          );
           this._shouldDisconnect = true;
           this._shouldDisconnectState = ClientState.connectionDenied;
         }
         break;
       case PacketType.connectionChallenge:
-        if (this._state !== ClientState.sendingConnectionResponse) {
+        if (this._state !== ClientState.sendingConnectionRequest) {
           return;
         }
+        this.debugLog(
+          `client ${this._id} got connection challenge packet from server`
+        );
         const challengePacket = packet as ChallengePacket;
         this._challengeSequence = challengePacket.challengeTokenSequence;
         this._challenTokenData = challengePacket.tokenData;
@@ -374,13 +374,23 @@ export class Client {
         }
         break;
       case PacketType.connectionPayload:
-        if (this._state != ClientState.connected) {
+        if (this._state !== ClientState.connected) {
           return;
         }
+        this.debugLog(
+          `client ${
+            this._id
+          } got payload packet from server ${(packet as PayloadPacket)
+            .sequence()
+            .toNumber()}`
+        );
         this._payloadPacketQueue.push(packet);
         break;
       case PacketType.connectionDisconnect:
-        if (this._state != ClientState.connected) {
+        this.debugLog(
+          `client ${this._id} got connection disconnect packet from server`
+        );
+        if (this._state !== ClientState.connected) {
           return;
         }
         this._shouldDisconnect = true;
@@ -432,10 +442,10 @@ export class Client {
 
   private _sequence: Long = new Long(0, 0);
   private _challenTokenData: Uint8Array;
-  private _challengeSequence: Long;
+  private _challengeSequence: Long = new Long(0, 0);
   private _allowedPackets: Uint8Array;
   private _payloadPacketQueue: Queue<IPacket>;
-  private _receivedPackets: INetcodeData[];
+  private _receivedPackets: INetcodeData[] = [];
 
   private _state: ClientState;
   private _replayProtection: ReplayProtection;

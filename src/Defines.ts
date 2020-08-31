@@ -44,13 +44,15 @@ export interface IUDPAddr {
   isIPV6?: boolean;
 }
 
+export type onMessageHandler = (message: Uint8Array, remote: IUDPAddr) => void;
+
 export interface IUDPConn {
-  connect(ip: string, port: number);
-  bind(port: number);
+  connect(addr: IUDPAddr);
+  bind(addr: IUDPAddr);
   send(b: Uint8Array): number;
-  sendTo(b: Uint8Array, ip: string, port: number): number;
+  sendTo(b: Uint8Array, addr: IUDPAddr): number;
   close();
   setReadBuffer(size: number);
   setWriteBuffer(size: number);
-  onMessage(callback: Function);
+  onMessage(callback: onMessageHandler);
 }

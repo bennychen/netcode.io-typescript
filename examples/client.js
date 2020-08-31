@@ -1,61 +1,65 @@
 var udp = require('dgram');
 var http = require('http');
-var buffer = require('buffer');
-var { ConnectToken } = require('../bin/Token');
-const { Errors } = require('../bin/Errors');
-const { Client } = require('../bin/Client');
-
-// // creating a client socket
-// var client = udp.createSocket('udp4');
-
-// //buffer msg
-// var data = Buffer.from('siddheshrane');
-
-// client.on('message', function (msg, info) {
-//   console.log('Data received from server : ' + msg.toString());
-//   console.log(
-//     'Received %d bytes from %s:%d\n',
-//     msg.length,
-//     info.address,
-//     info.port
-//   );
-// });
-
-// //sending msg
-// client.send(data, 2222, 'localhost', function (error) {
-//   if (error) {
-//     client.close();
-//   } else {
-//     console.log('Data sent !!!');
-//   }
-// });
-
-// var data1 = Buffer.from('hello');
-// var data2 = Buffer.from('world');
-
-// //sending multiple msg
-// client.send([data1, data2], 2222, 'localhost', function (error) {
-//   if (error) {
-//     client.close();
-//   } else {
-//     console.log('Data sent !!!');
-//   }
-// });
+var { ConnectToken } = require('../bin/js/Token');
+var { Errors } = require('../bin/js/Errors');
+var Defines = require('../bin/js/Defines');
+var { Utils } = require('../bin/js/Utils');
+var { Client, ClientState } = require('../bin/js/Client');
+var ipaddr = require('./ipaddr');
 
 class NodeUDPConn {
   constructor() {
     this._socket = udp.createSocket('udp4');
   }
   connect(addr) {
-    this._socket.connect(addr.)
+    var ipAddr = ipaddr.fromByteArray(addr.ip);
+    var ip = ipAddr.toString();
+    console.log('ip address', ip);
+    this._socket.connect(addr.port, ip);
   }
-  bind(addr) {}
-  send(b) {}
-  sendTo(b, to) {}
-  close() {}
-  setReadBuffer(size) {}
-  setWriteBuffer(size) {}
-  onMessage(callback) {}
+  bind(addr) {
+    var ipAddr = ipaddr.fromByteArray(addr.ip);
+    var ip = ipAddr.toString();
+    this._socket.bind(addr.port, ip);
+    this._binded = true;
+  }
+  send(b) {
+    this._socket.send(b);
+  }
+  sendTo(b, to) {
+    var ipAddr = ipaddr.fromByteArray(addr.ip);
+    var ip = ipAddr.toString();
+    this._socket.send(b, 0, b.length, to.port, ip);
+  }
+  close() {
+    this._socket.close;
+  }
+  setReadBuffer(size) {
+    if (this._binded) {
+      this._socket.setRecvBufferSize(size);
+    }
+  }
+  setWriteBuffer(size) {
+    if (this._binded) {
+      this._socket.setWriteBufferSize(size);
+    }
+  }
+  onMessage(callback) {
+    if (!this._strAddressToBytes) {
+      this._strAddressToBytes = {};
+    }
+    this._socket.on('message', (msg, remote) => {
+      const fullAddr = remote.address + ':' + remote.port;
+      let addr = this._strAddressToBytes[fullAddr];
+      if (!addr) {
+        const ipAddr = ipaddr.parse(remote.address);
+        addr = this._strAddressToBytes[fullAddr] = new Uint8Array(
+          ipAddr.toByteArray()
+        );
+      }
+      callback(msg, addr);
+    });
+  }
 }
 
 function getConnectToken() {
@@ -87,18 +91,56 @@ function getConnectToken() {
   });
 }
 
-function dial(addr) {}
+function createUdpConn(addr) {
+  return new NodeUDPConn();
+}
 
-function clientLoop(clientID, token) {
-  var time = 0;
-  var delta = 1 / 60;
+var time = 0;
+var payloadBytes = new Uint8Array(Defines.MAX_PAYLOAD_BYTES);
+for (let i = 0; i < payloadBytes.length; i += 1) {
+  payloadBytes[i] = i;
+}
 
-  var client = new Client();
+function startClientLoop(clientID, token) {
+  var client = new Client(token);
   client.id = clientID;
-  console.log(client);
-  client.connect();
+  client.debug = true;
+  console.log(client._connectToken.sharedTokenData.serverAddrs);
+  var err = client.connect(createUdpConn);
+  if (err !== Errors.none) {
+    console.error('error connecting', err);
+  }
+  console.log('client start connecting to server');
+  setInterval(fakeGameLoop, 2, client);
+}
+
+var printed = false;
+function fakeGameLoop(client) {
+  if (time > 5) {
+    clearInterval(fakeGameLoop);
+  }
+
+  if (client.state == ClientState.connected) {
+    if (!printed) {
+      console.log('client connected to server');
+      printed = true;
+    }
+    client.sendPayload(payloadBytes);
+  }
+
+  while (true) {
+    var r = client.recvPayload();
+    if (r && r.data) {
+      console.log('recv payload', r.data);
+    } else {
+      break;
+    }
+  }
+
+  client.tick(time);
+  time += 1 / 60;
 }
 
 getConnectToken().then(ret => {
-  clientLoop(ret.clientID, ret.token);
+  startClientLoop(ret.clientID, ret.token);
 });

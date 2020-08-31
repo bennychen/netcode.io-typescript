@@ -54,7 +54,20 @@ export class PacketFactory {
     switch (packetType) {
       case PacketType.connectionRequest:
         return new RequestPacket();
+      case PacketType.connectionChallenge:
+        return new ChallengePacket();
+      case PacketType.connectionResponse:
+        return new ResponsePacket();
+      case PacketType.connectionKeepAlive:
+        return new KeepAlivePacket();
+      case PacketType.connectionDenied:
+        return new DeniedPacket();
+      case PacketType.connectionPayload:
+        return new PayloadPacket();
+      case PacketType.connectionDisconnect:
+        return new DisconnectPacket();
       default:
+        console.error('unknown connection type', packetType);
         return null;
     }
   }

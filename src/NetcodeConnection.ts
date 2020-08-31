@@ -1,7 +1,5 @@
 import * as Defines from './Defines';
 import { IUDPAddr, IUDPConn } from './Defines';
-import { Errors } from './Errors';
-import { Queue } from './Utils';
 import { PacketFactory, PacketType } from './Packet';
 
 export const SOCKET_RCVBUF_SIZE = 2048 * 2048;
@@ -21,7 +19,6 @@ export class NetcodeConn {
     this._maxBytes = Defines.MAX_PACKET_BYTES;
     this._recvSize = SOCKET_RCVBUF_SIZE;
     this._sendSize = SOCKET_SNDBUF_SIZE;
-    this._msgQueue = new Queue<INetcodeData>(128);
   }
 
   public setRecvHandler(recvHandlerFn: NetcodeRecvHandler) {
@@ -35,11 +32,11 @@ export class NetcodeConn {
     return this._conn.send(b);
   }
 
-  public writeTo(b: Uint8Array, address: string, port: number): number {
+  public writeTo(b: Uint8Array, addr: IUDPAddr): number {
     if (this._isClosed) {
       return -1;
     }
-    return this._conn.sendTo(b, address, port);
+    return this._conn.sendTo(b, addr);
   }
 
   public close() {
@@ -59,11 +56,7 @@ export class NetcodeConn {
     this._sendSize = bytes;
   }
 
-  public dial(
-    createUdpConn: UDPConnCreator,
-    ip: string,
-    port: number
-  ): boolean {
+  public dial(createUdpConn: UDPConnCreator, addr: IUDPAddr): boolean {
     if (!this._recvHandlerFn) {
       return false;
     }
@@ -71,38 +64,26 @@ export class NetcodeConn {
     this._conn = createUdpConn();
     if (this._conn !== undefined) {
       this.init();
-      this._conn.connect(ip, port);
+      this._conn.connect(addr);
       return true;
     } else {
       return false;
     }
   }
 
-  public listen(createUdpConn: UDPConnCreator, port: number): boolean {
+  public listen(createUdpConn: UDPConnCreator, addr: IUDPAddr): boolean {
     if (!this._recvHandlerFn) {
       return false;
     }
 
     this._conn = createUdpConn();
     if (this._conn !== undefined) {
-      this._conn.bind(port);
+      this._conn.bind(addr);
       this.init();
       return true;
     } else {
       return false;
     }
-  }
-
-  public read(): Errors {
-    if (!this._recvHandlerFn) {
-      return Errors.invalidHandler;
-    }
-    const msg = this._msgQueue.pop();
-    if (PacketFactory.peekPacketType(msg.data) >= PacketType.numPackets) {
-      return Errors.invalidPacket;
-    }
-    this._recvHandlerFn(msg);
-    return Errors.none;
   }
 
   private init() {
@@ -113,20 +94,23 @@ export class NetcodeConn {
     this._conn.onMessage(this.onMessage.bind(this));
   }
 
-  private onMessage(
-    message: Uint8Array,
-    messageSize: number,
-    remote: IUDPAddr
-  ) {
-    if (message && messageSize > 0 && messageSize <= this._maxBytes) {
-      this._msgQueue.push({
-        data: message.subarray(0, messageSize),
-        from: remote,
-      });
+  private onMessage(message: Uint8Array, remote: IUDPAddr) {
+    if (!this._recvHandlerFn) {
+      console.warn('no recv handler is set for connection');
+      return;
+    }
+    if (message && message.length <= this._maxBytes) {
+      if (PacketFactory.peekPacketType(message) >= PacketType.numPackets) {
+        console.warn('invalid netcode packet is received');
+      } else {
+        this._recvHandlerFn({
+          data: message,
+          from: remote,
+        });
+      }
     }
   }
 
-  private _msgQueue: Queue<INetcodeData>;
   private _conn: IUDPConn;
   private _isClosed: boolean;
   private _maxBytes: number;
