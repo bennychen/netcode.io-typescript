@@ -7,8 +7,8 @@
     "experimentalDecorators": true,
     "sourceMap": true,
     "alwaysStrict": true,
-    "rootDir": "./",
-    "outDir": "./bin",
+    "rootDir": "./src",
+    "outDir": "./bin/js",
     "removeComments": true,
     "skipLibCheck": true
   },

@@ -2,7 +2,7 @@ import * as Defines from './Defines';
 import { Utils } from './Utils';
 import { Errors } from './Errors';
 import { Long, ByteBuffer } from './ByteBuffer';
-import * as chacha from './chacha20poly1305';
+import * as chacha from '../libs/chacha20poly1305';
 
 // This struct contains data that is shared in both public and private parts of the
 // connect token.
@@ -273,7 +273,7 @@ export class ConnectTokenPrivate {
       this.mac
     );
     if (decrypted) {
-      this.tokenData = new ByteBuffer(decrypted);
+      this.tokenData = new ByteBuffer(decrypted as Uint8Array);
     } else {
       console.error('decrypted connect private token failed');
       return;
@@ -454,7 +454,7 @@ export class ChallengeToken {
       tokenBuffer.subarray(Defines.CHALLENGE_TOKEN_BYTES - Defines.MAC_BYTES)
     );
     if (decrypted) {
-      return decrypted;
+      return decrypted as Uint8Array;
     }
   }
 

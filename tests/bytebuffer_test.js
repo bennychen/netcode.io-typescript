@@ -1,5 +1,5 @@
-var BB = require('../bin/ByteBuffer');
-var Defines = require('../bin/Defines');
+var BB = require('../bin/js/ByteBuffer');
+var Defines = require('../bin/js/Defines');
 var assert = require('assert');
 
 var versionInfo = 'NETCODE 1.01\x00';

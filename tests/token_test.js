@@ -1,10 +1,9 @@
-var CT = require('../bin/Token');
-var BB = require('../bin/ByteBuffer');
-var { Utils } = require('../bin/Utils');
-var Defines = require('../bin/Defines');
-var chacha = require('../bin/chacha20poly1305');
+var CT = require('../bin/js/Token');
+var BB = require('../bin/js/ByteBuffer');
+var { Utils } = require('../bin/js/Utils');
+var Defines = require('../bin/js/Defines');
 var assert = require('assert');
-const { Errors } = require('../bin/Errors');
+const { Errors } = require('../bin/js/Errors');
 
 var TEST_PROTOCOL_ID = BB.Long.fromNumber(0x1122334455667788);
 var TEST_CONNECT_TOKEN_EXPIRY = 30;
@@ -108,7 +107,7 @@ describe('ConnectToken tests', function () {
     var ts = Date.now();
     var expireTs = ts + TEST_CONNECT_TOKEN_EXPIRY;
     var timeoutSeconds = 10;
-    var userData = chacha.getRandomBytes(Defines.USER_DATA_BYTES);
+    var userData = Utils.getRandomBytes(Defines.USER_DATA_BYTES);
 
     var token1 = CT.ConnectTokenPrivate.create(
       TEST_CLIENT_ID,
@@ -305,7 +304,7 @@ describe('ConnectToken tests', function () {
 describe('ChallengeToken tests', function () {
   it('read/write challenge token', function () {
     var token = new CT.ChallengeToken(TEST_CLIENT_ID);
-    var userData = chacha.getRandomBytes(Defines.USER_DATA_BYTES);
+    var userData = Utils.getRandomBytes(Defines.USER_DATA_BYTES);
     var tokenBuffer = token.write(userData);
 
     var sequence = BB.Long.fromNumber(9999);

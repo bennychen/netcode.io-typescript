@@ -4,7 +4,7 @@ import { ConnectTokenPrivate } from './Token';
 import { Errors } from './Errors';
 import { Utils } from './Utils';
 import { ReplayProtection } from './ReplayProtection';
-import * as chacha from './chacha20poly1305';
+import * as chacha from '../libs/chacha20poly1305';
 
 export enum PacketType {
   connectionRequest,
@@ -42,7 +42,6 @@ export interface IPacket {
     readParams: IReadParams
   ): Errors;
 }
-
 
 export class PacketFactory {
   public static peekPacketType(packetBuffer: Uint8Array): PacketType {
@@ -790,7 +789,7 @@ export class PacketHelper {
     }
     return {
       sequence: packetSequence,
-      decrypted: new ByteBuffer(decrypted),
+      decrypted: new ByteBuffer(decrypted as Uint8Array),
       err: Errors.none,
     };
   }

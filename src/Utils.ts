@@ -1,4 +1,4 @@
-import * as chacha from './chacha20poly1305';
+import * as chacha from '../libs/chacha20poly1305';
 import * as Defines from './Defines';
 
 export class Utils {

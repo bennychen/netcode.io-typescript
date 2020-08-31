@@ -1,7 +1,7 @@
 var {
   ReplayProtection,
   REPLAY_PROTECTION_BUFFER_SIZE,
-} = require('../bin/ReplayProtection');
+} = require('../bin/js/ReplayProtection');
 var assert = require('assert');
 
 describe('ReplayProtection tests', function () {

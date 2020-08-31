@@ -1,5 +1,5 @@
-var { ByteBuffer, Long } = require('../bin/ByteBuffer');
-var { Utils } = require('../bin/Utils');
+var { ByteBuffer, Long } = require('../bin/js/ByteBuffer');
+var { Utils } = require('../bin/js/Utils');
 var {
   PacketHelper,
   DisconnectPacket,
@@ -10,12 +10,11 @@ var {
   ResponsePacket,
   KeepAlivePacket,
   PayloadPacket,
-} = require('../bin/Packet');
-var Defines = require('../bin/Defines');
-var chacha = require('../bin/chacha20poly1305');
+} = require('../bin/js/Packet');
+var Defines = require('../bin/js/Defines');
 var assert = require('assert');
-const { Errors } = require('../bin/Errors');
-const { ConnectToken } = require('../bin/Token');
+const { Errors } = require('../bin/js/Errors');
+const { ConnectToken } = require('../bin/js/Token');
 
 var TEST_PROTOCOL_ID = Long.fromNumber(0x1122334455667788);
 var TEST_CONNECT_TOKEN_EXPIRY = 30;

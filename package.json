@@ -22,5 +22,6 @@
     "url": "https://github.com/bennychen/netcode.io-typescript/issues"
   },
   "homepage": "https://github.com/bennychen/netcode.io-typescript#readme",
-  "devDependencies": {}
+  "devDependencies": {},
+  "dependencies": {}
 }
