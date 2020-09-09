@@ -10,7 +10,8 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "mocha ./tests/*_test.js"
+    "test": "mocha ./tests/*_test.js",
+    "build": "tsc"
   },
   "repository": {
     "type": "git",

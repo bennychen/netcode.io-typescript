@@ -100,11 +100,12 @@ function createUdpConn(addr) {
 }
 
 var time = 0;
-var payloadBytes = new Uint8Array(Defines.MAX_PAYLOAD_BYTES);
-for (let i = 0; i < payloadBytes.length; i += 1) {
-  payloadBytes[i] = i;
-}
-// payloadBytes = new Uint8Array(2);
+// var payloadBytes = new Uint8Array(Defines.MAX_PAYLOAD_BYTES);
+// for (let i = 0; i < payloadBytes.length; i += 1) {
+//   payloadBytes[i] = i;
+// }
+payloadBytes = new Uint8Array(1);
+payloadBytes[0] = 1 | (2 << 1);
 
 function startClientLoop(clientID, token) {
   var client = new Client(token);
