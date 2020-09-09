@@ -77,13 +77,15 @@ function getConnectToken() {
     callback = function (response) {
       response.on('data', function (chunk) {
         webtoken = JSON.parse(chunk);
+        // console.log(webtoken);
         let buff = Buffer.alloc(2048, webtoken.connect_token, 'base64');
         const token = new ConnectToken();
         var err = token.read(buff);
         if (err === Errors.none) {
           resolve({ token, clientID: webtoken.client_id });
         } else {
-          rejects();
+          console.error('read token faile', Errors[err]);
+          reject();
         }
       });
     };
@@ -102,6 +104,7 @@ var payloadBytes = new Uint8Array(Defines.MAX_PAYLOAD_BYTES);
 for (let i = 0; i < payloadBytes.length; i += 1) {
   payloadBytes[i] = i;
 }
+// payloadBytes = new Uint8Array(2);
 
 function startClientLoop(clientID, token) {
   var client = new Client(token);

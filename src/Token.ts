@@ -23,11 +23,7 @@ export class SharedTokenData {
       return Errors.EOF;
     }
     const servers = buffer.readUint32();
-    if (
-      servers === undefined ||
-      servers <= 0 ||
-      servers > Defines.MAX_SERVERS_PER_CONNECT
-    ) {
+    if (servers === undefined) {
       return Errors.EOF;
     }
     if (servers <= 0) {
