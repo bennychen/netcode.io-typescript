@@ -1,5 +1,4 @@
 'use strict';
-Object.defineProperty(exports, '__esModule', { value: true });
 // code from https://gist.github.com/rumkin/e852eb12fe11281a5738c0a8abaf5e1a
 
 /* chacha20 - 256 bits */
@@ -48,7 +47,7 @@ function Chacha20(key, nonce, counter) {
   this.input[14] = U8TO32_LE(nonce, 4);
   this.input[15] = U8TO32_LE(nonce, 8);
 }
-exports.Chacha20 = Chacha20;
+this.Chacha20 = Chacha20;
 
 Chacha20.prototype.quarterRound = function (x, a, b, c, d) {
   x[a] += x[b];
@@ -392,7 +391,7 @@ function aead_mac(polykey, data, ciphertext) {
   return poly1305_auth(m, m.length, polykey);
 }
 
-exports.aead_encrypt = function (key, nonce, plaintext, data) {
+this.aead_encrypt = function (key, nonce, plaintext, data) {
   var plen = plaintext.length,
     buf = new Uint8Array(plen),
     ciphertext = new Uint8Array(plen),
@@ -410,7 +409,7 @@ exports.aead_encrypt = function (key, nonce, plaintext, data) {
   return [ciphertext, aead_mac(polykey, data, ciphertext)];
 };
 
-exports.aead_decrypt = function (key, nonce, ciphertext, data, mac) {
+this.aead_decrypt = function (key, nonce, ciphertext, data, mac) {
   var plen = ciphertext.length,
     buf = new Uint8Array(plen),
     plaintext = new Uint8Array(plen),
@@ -432,7 +431,7 @@ exports.aead_decrypt = function (key, nonce, ciphertext, data, mac) {
   return plaintext;
 };
 
-exports.getRandomBytes = (typeof self !== 'undefined' &&
+this.getRandomBytes = (typeof self !== 'undefined' &&
   (self.crypto || self.msCrypto)
   ? function () {
       // Browsers
