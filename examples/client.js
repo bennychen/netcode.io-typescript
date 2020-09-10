@@ -80,7 +80,7 @@ function getConnectToken() {
         if (err === Netcode.Errors.none) {
           resolve({ token, clientID: webtoken.client_id });
         } else {
-          console.error('read token faile', Errors[err]);
+          console.error('read token faile', Netcode.Errors[err]);
           reject();
         }
       });

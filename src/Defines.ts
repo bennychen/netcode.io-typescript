@@ -53,8 +53,8 @@ namespace Netcode {
   export interface IUDPConn {
     connect(addr: IUDPAddr);
     bind(addr: IUDPAddr);
-    send(b: Uint8Array): number;
-    sendTo(b: Uint8Array, addr: IUDPAddr): number;
+    send(b: Uint8Array);
+    sendTo(b: Uint8Array, addr: IUDPAddr);
     close();
     setReadBuffer(size: number);
     setWriteBuffer(size: number);

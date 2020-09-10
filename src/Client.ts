@@ -294,7 +294,7 @@ namespace Netcode {
       if (bytesCount <= 0) {
         return false;
       }
-      if (this._conn.write(buffer.subarray(0, bytesCount)) <= 0) {
+      if (!this._conn.write(buffer.subarray(0, bytesCount))) {
         return false;
       }
       this._lastPacketSendTime = this._time;

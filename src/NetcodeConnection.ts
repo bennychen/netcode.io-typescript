@@ -22,18 +22,20 @@ namespace Netcode {
       this._recvHandlerFn = recvHandlerFn;
     }
 
-    public write(b: Uint8Array): number {
+    public write(b: Uint8Array): boolean {
       if (this._isClosed) {
-        return -1;
+        return false;
       }
-      return this._conn.send(b);
+      this._conn.send(b);
+      return true;
     }
 
-    public writeTo(b: Uint8Array, addr: IUDPAddr): number {
+    public writeTo(b: Uint8Array, addr: IUDPAddr): boolean {
       if (this._isClosed) {
-        return -1;
+        return false;
       }
-      return this._conn.sendTo(b, addr);
+      this._conn.sendTo(b, addr);
+      return true;
     }
 
     public close() {
