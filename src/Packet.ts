@@ -685,7 +685,7 @@ namespace Netcode {
         sequence
       );
 
-      const encrypted = aead_encrypt(
+      const encrypted = Utils.aead_encrypt(
         writePacketKey,
         nonce,
         encryptedBuffer,
@@ -777,7 +777,7 @@ namespace Netcode {
         return { err: Errors.badPacketLength };
       }
 
-      const decrypted = aead_decrypt(
+      const decrypted = Utils.aead_decrypt(
         readPacketKey,
         nonce,
         encryptedBuff.subarray(0, encryptedBuff.length - MAC_BYTES),

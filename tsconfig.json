@@ -1,15 +1,16 @@
 {
   "compilerOptions": {
+    "module": "amd",
     "target": "es6",
     "composite": true,
     "experimentalDecorators": true,
     "sourceMap": true,
     "alwaysStrict": true,
     "rootDir": "./src",
-    "outFile": "./bin/js/netcode.js",
+    "outFile": "./dist/browser/netcode.js",
     "removeComments": true,
     "skipLibCheck": true
   },
-  "include": ["./src/**/*.ts", "./libs/chacha20poly1305.d.ts"],
+  "include": ["./src/**/*.ts", "src/chacha20poly1305.d.ts"],
   "exclude": ["./bin/"]
 }

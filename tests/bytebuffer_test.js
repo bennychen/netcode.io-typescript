@@ -1,13 +1,10 @@
-var BB = require('../bin/js/ByteBuffer');
-var Defines = require('../bin/js/Defines');
 var assert = require('assert');
-
-var versionInfo = 'NETCODE 1.01\x00';
+var { Netcode } = require('../dist/node/netcode');
 
 describe('ByteBuffer tests', function () {
   it('correct write/read bytes', function () {
-    var bb = new BB.ByteBuffer(new Uint8Array(64));
-    var input = new Uint8Array(Defines.VERSION_INFO_BYTES_ARRAY);
+    var bb = new Netcode.ByteBuffer(new Uint8Array(64));
+    var input = new Uint8Array(Netcode.VERSION_INFO_BYTES_ARRAY);
     assert.equal(bb.position, 0, 'oh no');
     bb.writeBytes(input);
     assert.equal(bb.position, 13, 'oh no');
@@ -16,7 +13,7 @@ describe('ByteBuffer tests', function () {
     assert.equal(bb.position, 0, 'oh no');
     var output = bb.readBytes(13);
     output.forEach(function (item, index) {
-      if (Defines.VERSION_INFO_BYTES_ARRAY[index] !== item) {
+      if (Netcode.VERSION_INFO_BYTES_ARRAY[index] !== item) {
         assert(false, 'oh no');
       }
     });
@@ -25,7 +22,7 @@ describe('ByteBuffer tests', function () {
 
   it('correct write/read byte', function () {
     var array = new Uint8Array(1);
-    let bb = new BB.ByteBuffer(array);
+    let bb = new Netcode.ByteBuffer(array);
     bb.writeUint8(0xfe);
     assert.equal(bb.position, 1, 'oh no');
 
@@ -37,7 +34,7 @@ describe('ByteBuffer tests', function () {
 
   it('correct write/read int8', function () {
     var array = new Uint8Array(1);
-    let bb = new BB.ByteBuffer(array);
+    let bb = new Netcode.ByteBuffer(array);
     bb.writeInt8(-3);
     assert.equal(bb.position, 1, 'oh no');
 
@@ -49,7 +46,7 @@ describe('ByteBuffer tests', function () {
 
   it('correct write/read uint16', function () {
     var array = new Uint8Array(2);
-    let bb = new BB.ByteBuffer(array);
+    let bb = new Netcode.ByteBuffer(array);
     bb.writeUint16(9999);
     assert.equal(bb.position, 2, 'oh no');
 
@@ -61,7 +58,7 @@ describe('ByteBuffer tests', function () {
 
   it('correct write/read int16', function () {
     var array = new Uint8Array(2);
-    let bb = new BB.ByteBuffer(array);
+    let bb = new Netcode.ByteBuffer(array);
     bb.writeInt16(-9999);
     assert.equal(bb.position, 2, 'oh no');
 
@@ -73,7 +70,7 @@ describe('ByteBuffer tests', function () {
 
   it('correct write/read uint32', function () {
     var array = new Uint8Array(4);
-    let bb = new BB.ByteBuffer(array);
+    let bb = new Netcode.ByteBuffer(array);
     bb.writeUint32(99999);
     assert.equal(bb.position, 4, 'oh no');
 
@@ -85,7 +82,7 @@ describe('ByteBuffer tests', function () {
 
   it('correct write/read int32', function () {
     var array = new Uint8Array(4);
-    let bb = new BB.ByteBuffer(array);
+    let bb = new Netcode.ByteBuffer(array);
     bb.writeUint32(-99999);
     assert.equal(bb.position, 4, 'oh no');
 
@@ -97,8 +94,8 @@ describe('ByteBuffer tests', function () {
 
   it('correct write/read uint64', function () {
     var array = new Uint8Array(8);
-    let bb = new BB.ByteBuffer(array);
-    const l = new BB.Long(65534, 99999);
+    let bb = new Netcode.ByteBuffer(array);
+    const l = new Netcode.Long(65534, 99999);
     bb.writeUint64(l);
     assert.equal(bb.position, 8, 'oh no');
 
@@ -110,12 +107,12 @@ describe('ByteBuffer tests', function () {
 
   it('test Long', function () {
     var n = 3293924239;
-    var l = BB.Long.fromNumber(n);
+    var l = Netcode.Long.fromNumber(n);
     assert.equal(l.toNumber(), n, 'oh no');
 
-    var l2 = new BB.Long(2432, 9923);
+    var l2 = new Netcode.Long(2432, 9923);
     var n2 = l2.toNumber();
-    var l3 = BB.Long.fromNumber(n2);
+    var l3 = Netcode.Long.fromNumber(n2);
     assert.equal(l2.equals(l3), true, 'on no');
   });
 });

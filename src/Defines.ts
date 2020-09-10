@@ -61,3 +61,5 @@ namespace Netcode {
     onMessage(callback: onMessageHandler);
   }
 }
+
+this.Netcode = Netcode;

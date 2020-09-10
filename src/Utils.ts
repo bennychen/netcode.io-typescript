@@ -1,3 +1,13 @@
+// let chacha = {
+//   aead_encrypt: this['aead_encrypt'],
+//   aead_decrypt: this['aead_decrypt'],
+//   getRandomBytes: this['getRandomBytes'],
+// };
+// if (!chacha.aead_encrypt) {
+//   import('./chacha20poly1305').then(chachaModule => {
+//     chacha = chachaModule;
+//   });
+// }
 namespace Netcode {
   export class Utils {
     public static generateKey(): Uint8Array {
@@ -6,6 +16,25 @@ namespace Netcode {
 
     public static getRandomBytes(num: number): Uint8Array {
       return getRandomBytes(num);
+    }
+
+    public static aead_encrypt(
+      key: Uint8Array | Array<number>,
+      nonce: Uint8Array | Array<number>,
+      plaintext: Uint8Array | Array<number>,
+      data: Uint8Array | Array<number>
+    ): Uint8Array[] {
+      return aead_encrypt(key, nonce, plaintext, data);
+    }
+
+    public static aead_decrypt(
+      key: Uint8Array | Array<number>,
+      nonce: Uint8Array | Array<number>,
+      ciphertext: Uint8Array | Array<number>,
+      data: Uint8Array | Array<number>,
+      mac: Uint8Array | Array<number>
+    ): boolean | Uint8Array {
+      return aead_decrypt(key, nonce, ciphertext, data, mac);
     }
 
     public static blockCopy(

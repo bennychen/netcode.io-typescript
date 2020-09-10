@@ -1,24 +1,9 @@
-var { ByteBuffer, Long } = require('../bin/js/ByteBuffer');
-var { Utils } = require('../bin/js/Utils');
-var {
-  PacketHelper,
-  DisconnectPacket,
-  PacketType,
-  RequestPacket,
-  DeniedPacket,
-  ChallengePacket,
-  ResponsePacket,
-  KeepAlivePacket,
-  PayloadPacket,
-} = require('../bin/js/Packet');
-var Defines = require('../bin/js/Defines');
 var assert = require('assert');
-const { Errors } = require('../bin/js/Errors');
-const { ConnectToken } = require('../bin/js/Token');
+var { Netcode } = require('../dist/node/netcode');
 
-var TEST_PROTOCOL_ID = Long.fromNumber(0x1122334455667788);
+var TEST_PROTOCOL_ID = Netcode.Long.fromNumber(0x1122334455667788);
 var TEST_CONNECT_TOKEN_EXPIRY = 30;
-var TEST_SEQUENCE_START = Long.fromNumber(1000);
+var TEST_SEQUENCE_START = Netcode.Long.fromNumber(1000);
 var TEST_TIMEOUT_SECONDS = 15;
 var TEST_PRIVATE_KEY = new Uint8Array([
   0x60,
@@ -54,59 +39,71 @@ var TEST_PRIVATE_KEY = new Uint8Array([
   0xab,
   0xa1,
 ]);
-var TEST_CLIENT_ID = Long.fromNumber(0x1);
+var TEST_CLIENT_ID = Netcode.Long.fromNumber(0x1);
 
 function assertBytesEqual(a1, a2, str) {
-  assert.equal(Utils.arrayEqual(a1, a2), true, str);
+  assert.equal(Netcode.Utils.arrayEqual(a1, a2), true, str);
 }
 
 describe('Test Packet', function () {
   it('test sequence', function () {
     assert.equal(
-      PacketHelper.sequenceNumberBytesRequired(new Long(0, 0)),
+      Netcode.PacketHelper.sequenceNumberBytesRequired(new Netcode.Long(0, 0)),
       1,
       'oh no'
     );
     assert.equal(
-      PacketHelper.sequenceNumberBytesRequired(Long.fromNumber(0x11)),
+      Netcode.PacketHelper.sequenceNumberBytesRequired(
+        Netcode.Long.fromNumber(0x11)
+      ),
       1,
       'oh no'
     );
     assert.equal(
-      PacketHelper.sequenceNumberBytesRequired(Long.fromNumber(0x1122)),
+      Netcode.PacketHelper.sequenceNumberBytesRequired(
+        Netcode.Long.fromNumber(0x1122)
+      ),
       2,
       'oh no'
     );
     assert.equal(
-      PacketHelper.sequenceNumberBytesRequired(Long.fromNumber(0x112233)),
+      Netcode.PacketHelper.sequenceNumberBytesRequired(
+        Netcode.Long.fromNumber(0x112233)
+      ),
       3,
       'oh no'
     );
     assert.equal(
-      PacketHelper.sequenceNumberBytesRequired(Long.fromNumber(0x11223344)),
+      Netcode.PacketHelper.sequenceNumberBytesRequired(
+        Netcode.Long.fromNumber(0x11223344)
+      ),
       4,
       'oh no'
     );
     assert.equal(
-      PacketHelper.sequenceNumberBytesRequired(new Long(0x11223344, 0x55)),
+      Netcode.PacketHelper.sequenceNumberBytesRequired(
+        new Netcode.Long(0x11223344, 0x55)
+      ),
       5,
       'oh no'
     );
     assert.equal(
-      PacketHelper.sequenceNumberBytesRequired(Long.fromNumber(0x112233445566)),
+      Netcode.PacketHelper.sequenceNumberBytesRequired(
+        Netcode.Long.fromNumber(0x112233445566)
+      ),
       6,
       'oh no'
     );
     assert.equal(
-      PacketHelper.sequenceNumberBytesRequired(
-        Long.fromNumber(0x11223344556677)
+      Netcode.PacketHelper.sequenceNumberBytesRequired(
+        Netcode.Long.fromNumber(0x11223344556677)
       ),
       7,
       'oh no'
     );
     assert.equal(
-      PacketHelper.sequenceNumberBytesRequired(
-        Long.fromNumber(0x1122334455667788)
+      Netcode.PacketHelper.sequenceNumberBytesRequired(
+        Netcode.Long.fromNumber(0x1122334455667788)
       ),
       8,
       'oh no'
@@ -114,9 +111,9 @@ describe('Test Packet', function () {
   });
 
   it('test sequence write/read', function () {
-    var p = new DisconnectPacket();
-    var buf = ByteBuffer.allocate(4);
-    var prefixByte = PacketHelper.writePacketPrefix(
+    var p = new Netcode.DisconnectPacket();
+    var buf = Netcode.ByteBuffer.allocate(4);
+    var prefixByte = Netcode.PacketHelper.writePacketPrefix(
       p,
       buf,
       TEST_SEQUENCE_START
@@ -127,30 +124,30 @@ describe('Test Packet', function () {
     assert.equal(buf.readUint16(), TEST_SEQUENCE_START.low);
     buf.clearPosition();
     buf.skipPosition(1);
-    var seq = PacketHelper.readSequence(buf, 100, prefixByte);
+    var seq = Netcode.PacketHelper.readSequence(buf, 100, prefixByte);
     assert.equal(seq.equals(TEST_SEQUENCE_START), true);
 
-    var buf2 = ByteBuffer.allocate(9);
-    var maxSeq = new Long(0xffffffff, 0xffffffff);
-    var prefixByte2 = PacketHelper.writePacketPrefix(p, buf2, maxSeq);
+    var buf2 = Netcode.ByteBuffer.allocate(9);
+    var maxSeq = new Netcode.Long(0xffffffff, 0xffffffff);
+    var prefixByte2 = Netcode.PacketHelper.writePacketPrefix(p, buf2, maxSeq);
     assert.equal(prefixByte2, (8 << 4) + 6);
     buf2.clearPosition();
     buf2.skipPosition(1);
     assert.equal(buf2.readUint64().equals(maxSeq), true);
     buf2.clearPosition();
     buf2.skipPosition(1);
-    var seq2 = PacketHelper.readSequence(buf2, 100, prefixByte2);
+    var seq2 = Netcode.PacketHelper.readSequence(buf2, 100, prefixByte2);
     assert.equal(seq2.equals(maxSeq), true);
   });
 
   it('test connection request packet', function () {
-    var tokenKey = Utils.generateKey();
+    var tokenKey = Netcode.Utils.generateKey();
     var builds = testBuildRequestPacket(tokenKey);
     var inputPacket = builds[0];
     var decryptedToken = builds[1];
 
     var buffer = new Uint8Array(2048);
-    var packetKey = Utils.generateKey();
+    var packetKey = Netcode.Utils.generateKey();
     var bytesWritten = inputPacket.write(
       buffer,
       TEST_PROTOCOL_ID,
@@ -158,12 +155,12 @@ describe('Test Packet', function () {
       packetKey
     );
     assert.equal(bytesWritten > 0, true);
-    var allowedPackets = new Uint8Array(PacketType.numPackets);
+    var allowedPackets = new Uint8Array(Netcode.PacketType.numPackets);
     for (let i = 0; i < allowedPackets.length; i++) {
       allowedPackets[i] = 1;
     }
 
-    var outPacket = new RequestPacket();
+    var outPacket = new Netcode.RequestPacket();
     const err = outPacket.read(buffer, bytesWritten, {
       protocolId: TEST_PROTOCOL_ID,
       currentTimestamp: Date.now(),
@@ -172,11 +169,11 @@ describe('Test Packet', function () {
       allowedPackets,
       replayProtection: null,
     });
-    assert.equal(err, Errors.none, Errors[err]);
+    assert.equal(err, Netcode.Errors.none, Netcode.Errors[err]);
     assertBytesEqual(outPacket._versionInfo, inputPacket._versionInfo, 'oh no');
     assertBytesEqual(
       outPacket._versionInfo,
-      Defines.VERSION_INFO_BYTES_ARRAY,
+      Netcode.VERSION_INFO_BYTES_ARRAY,
       'oh no'
     );
     assert.equal(outPacket._protocolID.equals(inputPacket._protocolID), true);
@@ -194,9 +191,9 @@ describe('Test Packet', function () {
   });
 
   it('test connection denied packet', function () {
-    var inputPacket = new DeniedPacket();
-    var buffer = new Uint8Array(Defines.MAX_PACKET_BYTES);
-    var packetKey = Utils.generateKey();
+    var inputPacket = new Netcode.DeniedPacket();
+    var buffer = new Uint8Array(Netcode.MAX_PACKET_BYTES);
+    var packetKey = Netcode.Utils.generateKey();
     var bytesWritten = inputPacket.write(
       buffer,
       TEST_PROTOCOL_ID,
@@ -204,12 +201,12 @@ describe('Test Packet', function () {
       packetKey
     );
     assert.equal(bytesWritten > 0, true);
-    var allowedPackets = new Uint8Array(PacketType.numPackets);
+    var allowedPackets = new Uint8Array(Netcode.PacketType.numPackets);
     for (let i = 0; i < allowedPackets.length; i++) {
       allowedPackets[i] = 1;
     }
 
-    var outP = new DeniedPacket();
+    var outP = new Netcode.DeniedPacket();
     var err = outP.read(buffer, bytesWritten, {
       protocolId: TEST_PROTOCOL_ID,
       currentTimestamp: Date.now(),
@@ -218,18 +215,18 @@ describe('Test Packet', function () {
       allowedPackets,
       replayProtection: null,
     });
-    assert.equal(err === Errors.none, true, 'oh no');
+    assert.equal(err === Netcode.Errors.none, true, 'oh no');
     assert.equal(outP.sequence().equals(TEST_SEQUENCE_START), true);
   });
 
   it('test challenge packet', function () {
-    var inputPacket = new ChallengePacket();
+    var inputPacket = new Netcode.ChallengePacket();
     inputPacket.setProperties(
-      Long.ZERO,
-      Utils.getRandomBytes(Defines.CHALLENGE_TOKEN_BYTES)
+      Netcode.Long.ZERO,
+      Netcode.Utils.getRandomBytes(Netcode.CHALLENGE_TOKEN_BYTES)
     );
-    var buffer = new Uint8Array(Defines.MAX_PACKET_BYTES);
-    var packetKey = Utils.generateKey();
+    var buffer = new Uint8Array(Netcode.MAX_PACKET_BYTES);
+    var packetKey = Netcode.Utils.generateKey();
     var bytesWritten = inputPacket.write(
       buffer,
       TEST_PROTOCOL_ID,
@@ -237,12 +234,12 @@ describe('Test Packet', function () {
       packetKey
     );
     assert.equal(bytesWritten > 0, true);
-    var allowedPackets = new Uint8Array(PacketType.numPackets);
+    var allowedPackets = new Uint8Array(Netcode.PacketType.numPackets);
     for (let i = 0; i < allowedPackets.length; i++) {
       allowedPackets[i] = 1;
     }
 
-    var outP = new ChallengePacket();
+    var outP = new Netcode.ChallengePacket();
     var err = outP.read(buffer, bytesWritten, {
       protocolId: TEST_PROTOCOL_ID,
       currentTimestamp: Date.now(),
@@ -251,7 +248,7 @@ describe('Test Packet', function () {
       allowedPackets,
       replayProtection: null,
     });
-    assert.equal(err === Errors.none, true, 'oh no');
+    assert.equal(err === Netcode.Errors.none, true, 'oh no');
     assert.equal(outP.sequence().equals(TEST_SEQUENCE_START), true);
     assert.equal(
       outP.challengeTokenSequence.equals(inputPacket.challengeTokenSequence),
@@ -261,13 +258,13 @@ describe('Test Packet', function () {
   });
 
   it('test connection response packet', function () {
-    var inputPacket = new ResponsePacket();
+    var inputPacket = new Netcode.ResponsePacket();
     inputPacket.setProperties(
-      Long.ZERO,
-      Utils.getRandomBytes(Defines.CHALLENGE_TOKEN_BYTES)
+      Netcode.Long.ZERO,
+      Netcode.Utils.getRandomBytes(Netcode.CHALLENGE_TOKEN_BYTES)
     );
-    var buffer = new Uint8Array(Defines.MAX_PACKET_BYTES);
-    var packetKey = Utils.generateKey();
+    var buffer = new Uint8Array(Netcode.MAX_PACKET_BYTES);
+    var packetKey = Netcode.Utils.generateKey();
     var bytesWritten = inputPacket.write(
       buffer,
       TEST_PROTOCOL_ID,
@@ -275,12 +272,12 @@ describe('Test Packet', function () {
       packetKey
     );
     assert.equal(bytesWritten > 0, true);
-    var allowedPackets = new Uint8Array(PacketType.numPackets);
+    var allowedPackets = new Uint8Array(Netcode.PacketType.numPackets);
     for (let i = 0; i < allowedPackets.length; i++) {
       allowedPackets[i] = 1;
     }
 
-    var outP = new ResponsePacket();
+    var outP = new Netcode.ResponsePacket();
     var err = outP.read(buffer, bytesWritten, {
       protocolId: TEST_PROTOCOL_ID,
       currentTimestamp: Date.now(),
@@ -289,7 +286,7 @@ describe('Test Packet', function () {
       allowedPackets,
       replayProtection: null,
     });
-    assert.equal(err === Errors.none, true, 'oh no');
+    assert.equal(err === Netcode.Errors.none, true, 'oh no');
     assert.equal(outP.sequence().equals(TEST_SEQUENCE_START), true);
     assert.equal(
       outP.challengeTokenSequence.equals(inputPacket.challengeTokenSequence),
@@ -299,10 +296,10 @@ describe('Test Packet', function () {
   });
 
   it('test keep alive packet', function () {
-    var inputPacket = new KeepAlivePacket();
+    var inputPacket = new Netcode.KeepAlivePacket();
     inputPacket.setProperties(10, 128);
-    var buffer = new Uint8Array(Defines.MAX_PACKET_BYTES);
-    var packetKey = Utils.generateKey();
+    var buffer = new Uint8Array(Netcode.MAX_PACKET_BYTES);
+    var packetKey = Netcode.Utils.generateKey();
     var bytesWritten = inputPacket.write(
       buffer,
       TEST_PROTOCOL_ID,
@@ -310,12 +307,12 @@ describe('Test Packet', function () {
       packetKey
     );
     assert.equal(bytesWritten > 0, true);
-    var allowedPackets = new Uint8Array(PacketType.numPackets);
+    var allowedPackets = new Uint8Array(Netcode.PacketType.numPackets);
     for (let i = 0; i < allowedPackets.length; i++) {
       allowedPackets[i] = 1;
     }
 
-    var outP = new KeepAlivePacket();
+    var outP = new Netcode.KeepAlivePacket();
     var err = outP.read(buffer, bytesWritten, {
       protocolId: TEST_PROTOCOL_ID,
       currentTimestamp: Date.now(),
@@ -324,17 +321,17 @@ describe('Test Packet', function () {
       allowedPackets,
       replayProtection: null,
     });
-    assert.equal(err === Errors.none, true, 'oh no');
+    assert.equal(err === Netcode.Errors.none, true, 'oh no');
     assert.equal(outP.sequence().equals(TEST_SEQUENCE_START), true);
     assert.equal(outP.clientIndex, inputPacket.clientIndex);
     assert.equal(outP.maxClients, inputPacket.maxClients);
   });
 
   it('test payload packet', function () {
-    var payload = Utils.getRandomBytes(Defines.MAX_PAYLOAD_BYTES);
-    var inputPacket = new PayloadPacket(payload);
-    var buffer = new Uint8Array(Defines.MAX_PACKET_BYTES);
-    var packetKey = Utils.generateKey();
+    var payload = Netcode.Utils.getRandomBytes(Netcode.MAX_PAYLOAD_BYTES);
+    var inputPacket = new Netcode.PayloadPacket(payload);
+    var buffer = new Uint8Array(Netcode.MAX_PACKET_BYTES);
+    var packetKey = Netcode.Utils.generateKey();
     var bytesWritten = inputPacket.write(
       buffer,
       TEST_PROTOCOL_ID,
@@ -342,12 +339,12 @@ describe('Test Packet', function () {
       packetKey
     );
     assert.equal(bytesWritten > 0, true);
-    var allowedPackets = new Uint8Array(PacketType.numPackets);
+    var allowedPackets = new Uint8Array(Netcode.PacketType.numPackets);
     for (let i = 0; i < allowedPackets.length; i++) {
       allowedPackets[i] = 1;
     }
 
-    var outP = new PayloadPacket();
+    var outP = new Netcode.PayloadPacket();
     var err = outP.read(buffer, bytesWritten, {
       protocolId: TEST_PROTOCOL_ID,
       currentTimestamp: Date.now(),
@@ -356,22 +353,22 @@ describe('Test Packet', function () {
       allowedPackets,
       replayProtection: null,
     });
-    assert.equal(err === Errors.none, true, Errors[err]);
+    assert.equal(err === Netcode.Errors.none, true, Netcode.Errors[err]);
     assert.equal(outP.sequence().equals(TEST_SEQUENCE_START), true);
     assertBytesEqual(outP.payloadData, inputPacket.payloadData, 'oh no');
   });
 
   it('test disconnect packet', function () {
-    var p = new DisconnectPacket();
-    var buf = new Uint8Array(Defines.MAX_PACKET_BYTES);
-    var key = Utils.generateKey();
+    var p = new Netcode.DisconnectPacket();
+    var buf = new Uint8Array(Netcode.MAX_PACKET_BYTES);
+    var key = Netcode.Utils.generateKey();
     var writeLen = p.write(buf, TEST_PROTOCOL_ID, TEST_SEQUENCE_START, key);
-    assert.equal(writeLen, 3 + Defines.MAC_BYTES, 'oh no');
-    var allowedPackets = new Uint8Array(PacketType.numPackets);
+    assert.equal(writeLen, 3 + Netcode.MAC_BYTES, 'oh no');
+    var allowedPackets = new Uint8Array(Netcode.PacketType.numPackets);
     for (let i = 0; i < allowedPackets.length; i++) {
       allowedPackets[i] = 1;
     }
-    var outP = new DisconnectPacket();
+    var outP = new Netcode.DisconnectPacket();
     var err = outP.read(buf, writeLen, {
       protocolId: TEST_PROTOCOL_ID,
       currentTimestamp: Date.now(),
@@ -380,7 +377,7 @@ describe('Test Packet', function () {
       allowedPackets,
       replayProtection: null,
     });
-    assert.equal(err === Errors.none, true, 'oh no');
+    assert.equal(err === Netcode.Errors.none, true, 'oh no');
     assert.equal(outP.sequence().equals(TEST_SEQUENCE_START), true);
   });
 });
@@ -407,8 +404,8 @@ function testBuildRequestPacket(key) {
     ip: ipStringToBytes('10.20.30.40'),
     port: 40000,
   };
-  var userData = Utils.getRandomBytes(Defines.USER_DATA_BYTES);
-  var connectToken = new ConnectToken();
+  var userData = Netcode.Utils.getRandomBytes(Netcode.USER_DATA_BYTES);
+  var connectToken = new Netcode.ConnectToken();
   assert.equal(
     connectToken.generate(
       TEST_CLIENT_ID,
@@ -425,9 +422,9 @@ function testBuildRequestPacket(key) {
   var tokenBuffer = connectToken.write();
   assert.equal(tokenBuffer !== undefined, true, 'oh no');
 
-  var outToken = new ConnectToken();
+  var outToken = new Netcode.ConnectToken();
   var readRet = outToken.read(tokenBuffer);
-  assert.equal(readRet, Errors.none, 'oh no');
+  assert.equal(readRet, Netcode.Errors.none, 'oh no');
 
   var tokenData = connectToken.privateData.decrypt(
     TEST_PROTOCOL_ID,
@@ -440,12 +437,12 @@ function testBuildRequestPacket(key) {
   decryptedToken.set(tokenData);
 
   connectToken.privateData.tokenData.clearPosition();
-  var mac = new Uint8Array(Defines.MAC_BYTES);
+  var mac = new Uint8Array(Netcode.MAC_BYTES);
   const arr = new Uint8Array([
     ...connectToken.privateData.tokenData.bytes,
     ...mac,
   ]);
-  connectToken.privateData.tokenData = new ByteBuffer(arr);
+  connectToken.privateData.tokenData = new Netcode.ByteBuffer(arr);
   assert.equal(
     connectToken.privateData.encrypt(
       TEST_PROTOCOL_ID,
@@ -456,9 +453,9 @@ function testBuildRequestPacket(key) {
     true
   );
 
-  var p = new RequestPacket();
+  var p = new Netcode.RequestPacket();
   p.setProperties(
-    Defines.VERSION_INFO_BYTES_ARRAY,
+    Netcode.VERSION_INFO_BYTES_ARRAY,
     TEST_PROTOCOL_ID,
     connectToken.expireTimestamp,
     TEST_SEQUENCE_START,

@@ -1,4 +1,5 @@
-bin/js
+dist/browser
+dist/node
 *.tsbuildinfo
 .vscode
 node_modules

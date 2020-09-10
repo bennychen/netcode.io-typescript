@@ -209,7 +209,7 @@ namespace Netcode {
         0,
         CONNECT_TOKEN_PRIVATE_BYTES - MAC_BYTES
       );
-      const encrypted = aead_encrypt(
+      const encrypted = Utils.aead_encrypt(
         privateKey,
         nonce.bytes,
         encBuf,
@@ -251,7 +251,7 @@ namespace Netcode {
         expireTimestamp,
         sequence
       );
-      const decrypted = aead_decrypt(
+      const decrypted = Utils.aead_decrypt(
         privateKey,
         nonce.bytes,
         this.tokenData.bytes.subarray(
@@ -411,7 +411,7 @@ namespace Netcode {
       this._nonceBuffer.clearPosition();
       this._nonceBuffer.writeUint32(0);
       this._nonceBuffer.writeUint64(sequance);
-      const encrypted = aead_encrypt(
+      const encrypted = Utils.aead_encrypt(
         key,
         this._nonceBuffer.bytes,
         tokenBuffer.subarray(0, CHALLENGE_TOKEN_BYTES - MAC_BYTES),
@@ -429,7 +429,7 @@ namespace Netcode {
       this._nonceBuffer.clearPosition();
       this._nonceBuffer.writeUint32(0);
       this._nonceBuffer.writeUint64(sequance);
-      const decrypted = aead_decrypt(
+      const decrypted = Utils.aead_decrypt(
         key,
         this._nonceBuffer.bytes,
         tokenBuffer.subarray(0, CHALLENGE_TOKEN_BYTES - MAC_BYTES),

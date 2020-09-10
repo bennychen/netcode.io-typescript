@@ -1,19 +1,16 @@
-var {
-  ReplayProtection,
-  REPLAY_PROTECTION_BUFFER_SIZE,
-} = require('../bin/js/ReplayProtection');
 var assert = require('assert');
+var { Netcode } = require('../dist/node/netcode');
 
 describe('ReplayProtection tests', function () {
   it('test reset', function () {
-    const rp = new ReplayProtection();
+    const rp = new Netcode.ReplayProtection();
     for (const p of rp._receivedPacket) {
       assert.equal(p, 0xffffffffffffffff, 'oh no');
     }
   });
 
   it('test replay protection', function () {
-    const rp = new ReplayProtection();
+    const rp = new Netcode.ReplayProtection();
     for (let i = 0; i < 2; i += 1) {
       rp.reset();
       if (rp._mostRecentSequence !== 0) {
@@ -34,7 +31,7 @@ describe('ReplayProtection tests', function () {
     }
 
     // the first time we receive packets, they should not be already received
-    var maxSequence = REPLAY_PROTECTION_BUFFER_SIZE * 4;
+    var maxSequence = Netcode.REPLAY_PROTECTION_BUFFER_SIZE * 4;
     for (let sequence = 0; sequence < maxSequence; sequence += 1) {
       if (rp.checkAlreadyReceived(sequence)) {
         assert.fail(
@@ -64,7 +61,11 @@ describe('ReplayProtection tests', function () {
     }
 
     // jumping ahead to a much higher sequence should be considered not already received
-    if (rp.checkAlreadyReceived(maxSequence + REPLAY_PROTECTION_BUFFER_SIZE)) {
+    if (
+      rp.checkAlreadyReceived(
+        maxSequence + Netcode.REPLAY_PROTECTION_BUFFER_SIZE
+      )
+    ) {
       assert.fail(
         'jumping ahead to a much higher sequence should be considered not already received'
       );

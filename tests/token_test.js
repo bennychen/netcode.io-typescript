@@ -1,15 +1,11 @@
-var CT = require('../bin/js/Token');
-var BB = require('../bin/js/ByteBuffer');
-var { Utils } = require('../bin/js/Utils');
-var Defines = require('../bin/js/Defines');
+var { Netcode } = require('../dist/node/Netcode');
 var assert = require('assert');
-const { Errors } = require('../bin/js/Errors');
 
-var TEST_PROTOCOL_ID = BB.Long.fromNumber(0x1122334455667788);
+var TEST_PROTOCOL_ID = Netcode.Long.fromNumber(0x1122334455667788);
 var TEST_CONNECT_TOKEN_EXPIRY = 30;
 var TEST_SERVER_PORT = 40000;
-var TEST_CLIENT_ID = BB.Long.fromNumber(0x1);
-var TEST_SEQUENCE_START = BB.Long.fromNumber(1000);
+var TEST_CLIENT_ID = Netcode.Long.fromNumber(0x1);
+var TEST_SEQUENCE_START = Netcode.Long.fromNumber(1000);
 var TEST_TIMEOUT_SECONDS = 15;
 var TEST_PRIVATE_KEY = new Uint8Array([
   0x60,
@@ -47,38 +43,40 @@ var TEST_PRIVATE_KEY = new Uint8Array([
 ]);
 
 function assertBytesEqual(a1, a2, str) {
-  assert.equal(Utils.arrayEqual(a1, a2), true, str);
+  assert.equal(Netcode.Utils.arrayEqual(a1, a2), true, str);
 }
 
 function ipStringToBytes(ip) {
-  var addr = Utils.stringToIPV4Address(ip);
+  var addr = Netcode.Utils.stringToIPV4Address(ip);
   return addr.ip;
 }
 
 describe('ConnectToken tests', function () {
   it('read/write shared connect token', function () {
-    var clientKey = Utils.generateKey();
-    assert.equal(clientKey.length, Defines.KEY_BYTES, 'oh no');
-    var serverKey = Utils.generateKey();
-    assert.equal(serverKey.length, Defines.KEY_BYTES, 'oh no');
+    var clientKey = Netcode.Utils.generateKey();
+    assert.equal(clientKey.length, Netcode.KEY_BYTES, 'oh no');
+    var serverKey = Netcode.Utils.generateKey();
+    assert.equal(serverKey.length, Netcode.KEY_BYTES, 'oh no');
 
     var addr = {
       ip: ipStringToBytes('10.20.30.40'),
       port: TEST_SERVER_PORT,
     };
-    var data = new CT.SharedTokenData();
+    var data = new Netcode.SharedTokenData();
     data.timeoutSeconds = 10;
     data.serverAddrs = [addr];
     data.clientKey = clientKey;
     data.serverKey = serverKey;
 
-    var buffer = new BB.ByteBuffer(new Uint8Array(Defines.CONNECT_TOKEN_BYTES));
+    var buffer = new Netcode.ByteBuffer(
+      new Uint8Array(Netcode.CONNECT_TOKEN_BYTES)
+    );
     data.write(buffer);
     buffer.clearPosition();
 
-    var outData = new CT.SharedTokenData();
+    var outData = new Netcode.SharedTokenData();
     var ret = outData.read(buffer);
-    assert.equal(ret, Errors.none, 'oh no');
+    assert.equal(ret, Netcode.Errors.none, 'oh no');
     assertBytesEqual(clientKey, outData.clientKey, 'oh no');
     assertBytesEqual(serverKey, outData.serverKey, 'oh no');
     assert.equal(data.timeoutSeconds, outData.timeoutSeconds, 'oh no');
@@ -95,9 +93,9 @@ describe('ConnectToken tests', function () {
     var ts = Date.now();
     var expireTs = ts + TEST_CONNECT_TOKEN_EXPIRY;
     var timeoutSeconds = 10;
-    var userData = Utils.getRandomBytes(Defines.USER_DATA_BYTES);
+    var userData = Netcode.Utils.getRandomBytes(Netcode.USER_DATA_BYTES);
 
-    var token1 = CT.ConnectTokenPrivate.create(
+    var token1 = Netcode.ConnectTokenPrivate.create(
       TEST_CLIENT_ID,
       timeoutSeconds,
       [addr],
@@ -114,7 +112,7 @@ describe('ConnectToken tests', function () {
     assert.equal(ret, true, 'oh no');
 
     var encryptedToken = new Uint8Array(token1.buffer);
-    var token2 = CT.ConnectTokenPrivate.createEncrypted(encryptedToken);
+    var token2 = Netcode.ConnectTokenPrivate.createEncrypted(encryptedToken);
     const decrypted = token2.decrypt(
       TEST_PROTOCOL_ID,
       expireTs,
@@ -123,7 +121,7 @@ describe('ConnectToken tests', function () {
     );
     assert.equal(decrypted !== undefined, true, 'decrypt failed');
     ret = token2.read();
-    assert.equal(ret, Errors.none, 'oh no');
+    assert.equal(ret, Netcode.Errors.none, 'oh no');
 
     // compare tokens
     assert.equal(token1.clientId.equals(token2.clientId), true, 'oh no');
@@ -153,9 +151,9 @@ describe('ConnectToken tests', function () {
       'oh no'
     );
 
-    const buffer = new Uint8Array(Defines.CONNECT_TOKEN_PRIVATE_BYTES);
-    Utils.blockCopy(token2.buffer, 0, buffer, 0, token2.buffer.length);
-    token2.tokenData = new BB.ByteBuffer(buffer);
+    const buffer = new Uint8Array(Netcode.CONNECT_TOKEN_PRIVATE_BYTES);
+    Netcode.Utils.blockCopy(token2.buffer, 0, buffer, 0, token2.buffer.length);
+    token2.tokenData = new Netcode.ByteBuffer(buffer);
     token2.write();
     var ret = token2.encrypt(
       TEST_PROTOCOL_ID,
@@ -173,9 +171,9 @@ describe('ConnectToken tests', function () {
       ip: ipStringToBytes('10.20.30.40'),
       port: TEST_SERVER_PORT,
     };
-    var key = Utils.generateKey();
-    var userData = Utils.getRandomBytes(Defines.USER_DATA_BYTES);
-    var inToken = new CT.ConnectToken();
+    var key = Netcode.Utils.generateKey();
+    var userData = Netcode.Utils.getRandomBytes(Netcode.USER_DATA_BYTES);
+    var inToken = new Netcode.ConnectToken();
     var ret = inToken.generate(
       TEST_CLIENT_ID,
       [addr],
@@ -188,19 +186,19 @@ describe('ConnectToken tests', function () {
     );
     assertBytesEqual(
       inToken.versionInfo,
-      Defines.VERSION_INFO_BYTES_ARRAY,
+      Netcode.VERSION_INFO_BYTES_ARRAY,
       'oh no'
     );
     assert.equal(ret, true, 'oh no');
     var tokenBuffer = inToken.write();
     assert.equal(tokenBuffer !== undefined, true, 'oh no');
 
-    var outToken = new CT.ConnectToken();
+    var outToken = new Netcode.ConnectToken();
     var readRet = outToken.read(tokenBuffer);
-    assert.equal(readRet, Errors.none, 'oh no');
+    assert.equal(readRet, Netcode.Errors.none, 'oh no');
     assertBytesEqual(
       outToken.versionInfo,
-      Defines.VERSION_INFO_BYTES_ARRAY,
+      Netcode.VERSION_INFO_BYTES_ARRAY,
       'oh no'
     );
     assert.equal(outToken.protocolID.equals(TEST_PROTOCOL_ID), true, 'oh no');
@@ -263,7 +261,7 @@ describe('ConnectToken tests', function () {
       true,
       'oh no'
     );
-    assert.equal(outToken.privateData.read(), Errors.none, 'oh no');
+    assert.equal(outToken.privateData.read(), Netcode.Errors.none, 'oh no');
 
     assert.equal(outToken.sharedTokenData.serverAddrs.length, 1, 'oh no');
     assert.equal(
@@ -291,28 +289,28 @@ describe('ConnectToken tests', function () {
 
 describe('ChallengeToken tests', function () {
   it('read/write challenge token', function () {
-    var token = new CT.ChallengeToken(TEST_CLIENT_ID);
-    var userData = Utils.getRandomBytes(Defines.USER_DATA_BYTES);
+    var token = new Netcode.ChallengeToken(TEST_CLIENT_ID);
+    var userData = Netcode.Utils.getRandomBytes(Netcode.USER_DATA_BYTES);
     var tokenBuffer = token.write(userData);
 
-    var sequence = BB.Long.fromNumber(9999);
-    var key = Utils.generateKey();
+    var sequence = Netcode.Long.fromNumber(9999);
+    var key = Netcode.Utils.generateKey();
 
-    assert.equal(tokenBuffer.length, Defines.CHALLENGE_TOKEN_BYTES, 'oh no');
-    CT.ChallengeToken.encrypt(tokenBuffer, sequence, key);
-    assert.equal(tokenBuffer.length, Defines.CHALLENGE_TOKEN_BYTES, 'oh no');
+    assert.equal(tokenBuffer.length, Netcode.CHALLENGE_TOKEN_BYTES, 'oh no');
+    Netcode.ChallengeToken.encrypt(tokenBuffer, sequence, key);
+    assert.equal(tokenBuffer.length, Netcode.CHALLENGE_TOKEN_BYTES, 'oh no');
 
-    var decrypted = CT.ChallengeToken.decrypt(tokenBuffer, sequence, key);
+    var decrypted = Netcode.ChallengeToken.decrypt(tokenBuffer, sequence, key);
     assert.equal(decrypted instanceof Uint8Array, true, 'oh no');
     assert.equal(
       decrypted.length,
-      Defines.CHALLENGE_TOKEN_BYTES - Defines.MAC_BYTES,
+      Netcode.CHALLENGE_TOKEN_BYTES - Netcode.MAC_BYTES,
       'oh no'
     );
 
-    var token2 = new CT.ChallengeToken();
+    var token2 = new Netcode.ChallengeToken();
     var err = token2.read(decrypted);
-    assert.equal(err, Errors.none, 'oh no');
+    assert.equal(err, Netcode.Errors.none, 'oh no');
     assert.equal(token2.clientID.equals(token.clientID), true, 'oh no');
     assertBytesEqual(token2.userData, token.userData, 'oh no');
   });

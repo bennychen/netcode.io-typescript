@@ -1,10 +1,6 @@
 var udp = require('dgram');
 var http = require('http');
-var { ConnectToken } = require('../bin/js/Token');
-var { Errors } = require('../bin/js/Errors');
-var Defines = require('../bin/js/Defines');
-var { Utils } = require('../bin/js/Utils');
-var { Client, ClientState } = require('../bin/js/Client');
+var { Netcode } = require('../dist/node/netcode');
 var ipaddr = require('./ipaddr');
 
 class NodeUDPConn {
@@ -79,9 +75,9 @@ function getConnectToken() {
         webtoken = JSON.parse(chunk);
         // console.log(webtoken);
         let buff = Buffer.alloc(2048, webtoken.connect_token, 'base64');
-        const token = new ConnectToken();
+        const token = new Netcode.ConnectToken();
         var err = token.read(buff);
-        if (err === Errors.none) {
+        if (err === Netcode.Errors.none) {
           resolve({ token, clientID: webtoken.client_id });
         } else {
           console.error('read token faile', Errors[err]);
@@ -105,15 +101,15 @@ var time = 0;
 //   payloadBytes[i] = i;
 // }
 payloadBytes = new Uint8Array(1);
-payloadBytes[0] = 1 | (2 << 1);
+payloadBytes[0] = 0;
 
 function startClientLoop(clientID, token) {
-  var client = new Client(token);
+  var client = new Netcode.Client(token);
   client.id = clientID;
   client.debug = true;
   console.log(client._connectToken.sharedTokenData.serverAddrs);
   var err = client.connect(createUdpConn);
-  if (err !== Errors.none) {
+  if (err !== Netcode.Errors.none) {
     console.error('error connecting', err);
   }
   console.log('client start connecting to server');
@@ -126,7 +122,7 @@ function fakeGameLoop(client) {
     clearInterval(fakeGameLoop);
   }
 
-  if (client.state == ClientState.connected) {
+  if (client.state == Netcode.ClientState.connected) {
     if (!printed) {
       console.log('client connected to server');
       printed = true;
