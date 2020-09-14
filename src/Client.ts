@@ -92,6 +92,10 @@ namespace Netcode {
 
     public disconnect(reason: ClientState, sendDisconnect: boolean) {
       this.debugLog(`client[${this._id}] disconnected: ${ClientState[reason]}`);
+      if (reason > ClientState.disconnected) {
+        console.warn('reason > disconnected');
+        return;
+      }
       if (this._state <= ClientState.disconnected) {
         console.warn('state <= disconnected');
         return;
