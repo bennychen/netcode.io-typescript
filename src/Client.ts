@@ -400,7 +400,6 @@ namespace Netcode {
       this._startTime = 0;
       this._serverIndex = 0;
       this._serverAddr = null;
-      this._connectToken = null;
       this._context = null;
       this.state = newState;
       this.reset();
