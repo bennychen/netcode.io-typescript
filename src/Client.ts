@@ -163,7 +163,7 @@ namespace Netcode {
           {
             const timeout =
               this._lastPacketRecvTime +
-              this._connectToken.sharedTokenData.timeoutSeconds * 1000;
+              this._connectToken.sharedTokenData.timeoutSeconds;
             if (timeout < this._time) {
               this.debugLog(`client[${this._id}] connection request timed out`);
               if (this.connectNextServer()) {
@@ -177,7 +177,7 @@ namespace Netcode {
           {
             const timeout =
               this._lastPacketRecvTime +
-              this._connectToken.sharedTokenData.timeoutSeconds * 1000;
+              this._connectToken.sharedTokenData.timeoutSeconds;
             if (timeout < this._time) {
               this.debugLog(
                 `client[${this._id}] connection response timed out`
@@ -193,7 +193,7 @@ namespace Netcode {
           {
             const timeout =
               this._lastPacketRecvTime +
-              this._connectToken.sharedTokenData.timeoutSeconds * 1000;
+              this._connectToken.sharedTokenData.timeoutSeconds;
             if (timeout < this._time) {
               this.debugLog(`client[${this._id}] connection timed out`);
               this.disconnect(ClientState.connectionTimeout, false);
