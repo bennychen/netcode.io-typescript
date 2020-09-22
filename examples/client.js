@@ -96,12 +96,7 @@ function createUdpConn(addr) {
 }
 
 var time = 0;
-// var payloadBytes = new Uint8Array(Defines.MAX_PAYLOAD_BYTES);
-// for (let i = 0; i < payloadBytes.length; i += 1) {
-//   payloadBytes[i] = i;
-// }
-payloadBytes = new Uint8Array(1);
-payloadBytes[0] = 0;
+pingPayloadBytes = new Uint8Array(2);
 
 function startClientLoop(clientID, token) {
   var client = new Netcode.Client(token);
@@ -113,27 +108,34 @@ function startClientLoop(clientID, token) {
     console.error('error connecting', err);
   }
   console.log('client start connecting to server');
-  setInterval(fakeGameLoop, 2, client);
+  setInterval(fakeGameLoop, 17, client);
 }
 
 var printed = false;
+var lastSendPingTime = 0;
 function fakeGameLoop(client) {
-  if (time > 5) {
-    clearInterval(fakeGameLoop);
-  }
+  // if (time > 5) {
+  //   clearInterval(fakeGameLoop);
+  // }
 
   if (client.state == Netcode.ClientState.connected) {
     if (!printed) {
       console.log('client connected to server');
       printed = true;
     }
-    client.sendPayload(payloadBytes);
+    const now = Date.now();
+    if (now - lastSendPingTime > 1000) {
+      client.sendPayload(pingPayloadBytes);
+      lastSendPingTime = now;
+    }
   }
 
   while (true) {
     var r = client.recvPayload();
     if (r && r.data) {
-      console.log('recv payload', r.data);
+      console.log('recv pong payload', r.data);
+      const rtt = Date.now() - lastSendPingTime;
+      console.log('rtt', rtt);
     } else {
       break;
     }
