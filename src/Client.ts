@@ -48,8 +48,8 @@ namespace Netcode {
 
     public constructor(token: ConnectToken) {
       this._connectToken = token;
-      this._lastPacketRecvTime = -1;
-      this._lastPacketSendTime = -1;
+      this._lastPacketRecvTime = -0.001;
+      this._lastPacketSendTime = -0.001;
       this._shouldDisconnect = false;
       this.state = ClientState.disconnected;
       this._challenTokenData = new Uint8Array(CHALLENGE_TOKEN_BYTES);
@@ -117,8 +117,8 @@ namespace Netcode {
     }
 
     public reset() {
-      this._lastPacketSendTime = this._time - 1;
-      this._lastPacketRecvTime = this._time - 1;
+      this._lastPacketSendTime = this._time - 0.001;
+      this._lastPacketRecvTime = this._time - 0.001;
       this._shouldDisconnect = false;
       this._shouldDisconnectState = ClientState.disconnected;
       this._challenTokenData.fill(0);
@@ -126,8 +126,8 @@ namespace Netcode {
       this._replayProtection.reset();
     }
 
-    public tick(t: number) {
-      this._time = t;
+    public tick(timeInSeconds: number) {
+      this._time = timeInSeconds;
       for (const p of this._receivedPackets) {
         this.onPacketData(p.data, p.from);
       }
