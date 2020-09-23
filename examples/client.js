@@ -130,6 +130,8 @@ function fakeGameLoop(client) {
     }
   }
 
+  client.tick(time);
+
   while (true) {
     var r = client.recvPayload();
     if (r && r.data) {
@@ -141,7 +143,6 @@ function fakeGameLoop(client) {
     }
   }
 
-  client.tick(time);
   time += 1 / 60;
 }
 
