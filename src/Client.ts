@@ -12,8 +12,8 @@ namespace Netcode {
     connected = 3,
   }
 
-  const PACKET_SEND_RATE = 10.0;
-  const NUM_DISCONNECT_PACKETS = 10; // number of disconnect packets the client/server should send when disconnecting
+  export const PACKET_SEND_RATE = 10.0;
+  export const NUM_DISCONNECT_PACKETS = 10; // number of disconnect packets the client/server should send when disconnecting
 
   export interface IContext {
     writePacketKey: Uint8Array;

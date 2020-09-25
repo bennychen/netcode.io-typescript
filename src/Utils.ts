@@ -66,6 +66,21 @@ namespace Netcode {
       return true;
     }
 
+    public static addressEqual(addr1: IUDPAddr, addr2: IUDPAddr): boolean {
+      if (!addr1 || !addr2) {
+        return false;
+      }
+      return this.arrayEqual(addr1.ip, addr2.ip) && addr1.port == addr2.port;
+    }
+
+    public static floatEquals(a: number, b: number): boolean {
+      if (a - b < this.EPSILON && b - a < this.EPSILON) {
+        return true;
+      }
+      return false;
+    }
+    private static EPSILON: number = 0.000001;
+
     public static stringToIPV4Address(ip: string): IUDPAddr {
       const ipAndPort = ip.split(':');
       let port = 0;
