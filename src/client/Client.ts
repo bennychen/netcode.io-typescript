@@ -215,7 +215,7 @@ namespace Netcode {
       const packet = this._payloadPacketQueue.pop();
       if (packet) {
         const p = packet as PayloadPacket;
-        return { data: p.payloadData, sequence: p.sequence() };
+        return { data: p.payloadData, sequence: p.getSequence() };
       }
     }
 
@@ -372,7 +372,7 @@ namespace Netcode {
             `client ${
               this._id
             } got payload packet from server ${(packet as PayloadPacket)
-              .sequence()
+              .getSequence()
               .toNumber()}`
           );
           this._payloadPacketQueue.push(packet);

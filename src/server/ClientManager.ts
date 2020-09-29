@@ -6,7 +6,7 @@ namespace Netcode {
     public confirmed: boolean;
     public connected: boolean;
 
-    public encryptionIndex: number;
+    public encryptionIndex: number = 0;
     public sequence: Long;
     public lastSendTime: number;
     public lastRecvTime: number;
@@ -22,6 +22,7 @@ namespace Netcode {
       this.packetQueue = new Queue(PACKET_QUEUE_SIZE);
       this.packetData = new Uint8Array(MAX_PACKET_BYTES);
       this.replayProtection = new ReplayProtection();
+      this.sequence = new Long(0, 0);
     }
 
     public clear() {
@@ -91,7 +92,7 @@ namespace Netcode {
     public constructor(timeout: number, maxClients: number) {
       this.maxClients = maxClients;
       this.maxEntries = maxClients * 8;
-      this.timeout = timeout;
+      this._timeout = timeout;
       this.emptyMac = new Uint8Array(MAC_BYTES);
       this.emptyWriteKey = new Uint8Array(KEY_BYTES);
       this.resetClientInstances();
@@ -99,13 +100,17 @@ namespace Netcode {
       this.resetCryptoEntries();
     }
 
-    public set Timeout(value: number) {
-      this.timeout = value;
+    public get instances(): ClientInstance[] {
+      return this._instances;
+    }
+
+    public set timeout(value: number) {
+      this._timeout = value;
     }
 
     public findFreeClientIndex(): number {
       for (let i = 0; i < this.maxClients; i += 1) {
-        if (!this.instances[i].connected) {
+        if (!this._instances[i].connected) {
           return i;
         }
       }
@@ -122,7 +127,7 @@ namespace Netcode {
         clientIndex < this.maxClients;
         clientIndex += 1
       ) {
-        const client = this.instances[clientIndex];
+        const client = this._instances[clientIndex];
         if (client.connected && client.address) {
           connectedClientIds.push(client.clientId);
         }
@@ -144,7 +149,7 @@ namespace Netcode {
         console.warn('failure to find free client index');
         return null;
       }
-      const client = this.instances[clientIndex];
+      const client = this._instances[clientIndex];
       client.clientIndex = clientIndex;
       client.connected = true;
       client.sequence.setZero();
@@ -163,14 +168,14 @@ namespace Netcode {
       sendDisconnect: boolean,
       serverTime: number
     ) {
-      const instance = this.instances[clientIndex];
+      const instance = this._instances[clientIndex];
       this.disconnectClient(instance, sendDisconnect, serverTime);
     }
 
     // Finds the client index referenced by the provided UDPAddr.
     public findClientIndexByAddress(addr: IUDPAddr): number {
       for (let i = 0; i < this.maxClients; i += 1) {
-        const instance = this.instances[i];
+        const instance = this._instances[i];
         if (
           instance.address &&
           instance.connected &&
@@ -185,7 +190,7 @@ namespace Netcode {
     // Finds the client index via the provided clientId.
     public findClientIndexById(clientId: Long): number {
       for (let i = 0; i < this.maxClients; i += 1) {
-        const instance = this.instances[i];
+        const instance = this._instances[i];
         if (
           instance.address &&
           instance.connected &&
@@ -203,7 +208,7 @@ namespace Netcode {
         return -1;
       }
 
-      return this.instances[clientIndex].encryptionIndex;
+      return this._instances[clientIndex].encryptionIndex;
     }
 
     // Finds an encryption entry index via the provided UDPAddr.
@@ -217,7 +222,7 @@ namespace Netcode {
           continue;
         }
 
-        const lastAccessTimeout = entry.lastAccess + this.timeout;
+        const lastAccessTimeout = entry.lastAccess + this._timeout;
         if (
           Utils.addressEqual(entry.address, addr) &&
           this.serverTimedout(lastAccessTimeout, serverTime) &&
@@ -292,7 +297,7 @@ namespace Netcode {
       for (let i = 0; i < this.maxEntries; i += 1) {
         const entry = this.cryptoEntries[i];
 
-        const lastAccessTimeout = entry.lastAccess + this.timeout;
+        const lastAccessTimeout = entry.lastAccess + this._timeout;
         if (
           entry.address &&
           Utils.addressEqual(entry.address, addr) &&
@@ -311,7 +316,7 @@ namespace Netcode {
       for (let i = 0; i < this.maxEntries; i += 1) {
         const entry = this.cryptoEntries[i];
         if (
-          entry.lastAccess + this.timeout < serverTime ||
+          entry.lastAccess + this._timeout < serverTime ||
           (entry.expireTime >= 0 && entry.expireTime < serverTime)
         ) {
           entry.address = addr;
@@ -361,45 +366,23 @@ namespace Netcode {
       return true;
     }
 
-    // Removes the encryption entry for this UDPAddr.
-    private removeEncryptionEntry(addr: IUDPAddr, serverTime: number): boolean {
-      for (let i = 0; i < this.numCryptoEntries; i += 1) {
-        const entry = this.cryptoEntries[i];
-        if (!Utils.addressEqual(entry.address, addr)) {
-          continue;
-        }
-
-        this.clearCryptoEntry(entry);
-
-        if (i + 1 == this.numCryptoEntries) {
-          let index = i - 1;
-          while (index >= 0) {
-            const lastAccessTimeout =
-              this.cryptoEntries[index].lastAccess + this.timeout;
-            if (
-              this.serverTimedout(lastAccessTimeout, serverTime) &&
-              (this.cryptoEntries[index].expireTime < 0 ||
-                this.cryptoEntries[index].expireTime > serverTime)
-            ) {
-              break;
-            }
-            index--;
-          }
-          this.numCryptoEntries = index + 1;
-        }
-
-        return true;
-      }
-
-      return false;
+    // Returns the encryption send key.
+    public getEncryptionEntrySendKey(index: number): Uint8Array {
+      return this.getEncryptionEntryKey(index, true);
     }
 
-    private disconnectClient(
+    // Returns the encryption recv key.
+    public getEncryptionEntryRecvKey(index: number): Uint8Array {
+      return this.getEncryptionEntryKey(index, false);
+    }
+
+    public disconnectClient(
       client: ClientInstance,
       sendDisconnect: boolean,
       serverTime: number
     ) {
       if (!client.connected) {
+        console.error('client is already disconnected');
         return;
       }
 
@@ -427,16 +410,49 @@ namespace Netcode {
       client.clear();
     }
 
-    private resetClientInstances() {
-      this.instances = [];
+    // Removes the encryption entry for this UDPAddr.
+    public removeEncryptionEntry(addr: IUDPAddr, serverTime: number): boolean {
+      for (let i = 0; i < this.numCryptoEntries; i += 1) {
+        const entry = this.cryptoEntries[i];
+        if (!Utils.addressEqual(entry.address, addr)) {
+          continue;
+        }
+
+        this.clearCryptoEntry(entry);
+
+        if (i + 1 == this.numCryptoEntries) {
+          let index = i - 1;
+          while (index >= 0) {
+            const lastAccessTimeout =
+              this.cryptoEntries[index].lastAccess + this._timeout;
+            if (
+              this.serverTimedout(lastAccessTimeout, serverTime) &&
+              (this.cryptoEntries[index].expireTime < 0 ||
+                this.cryptoEntries[index].expireTime > serverTime)
+            ) {
+              break;
+            }
+            index--;
+          }
+          this.numCryptoEntries = index + 1;
+        }
+
+        return true;
+      }
+
+      return false;
+    }
+
+    public resetClientInstances() {
+      this._instances = [];
       for (let i = 0; i < this.maxClients; i += 1) {
         const instance = new ClientInstance();
-        this.instances[i] = instance;
+        this._instances[i] = instance;
       }
     }
 
     // preallocate the token buffers so we don't have to do nil checks
-    private resetTokenEntries() {
+    public resetTokenEntries() {
       this.connectTokensEntries = [];
       for (let i = 0; i < this.maxEntries; i += 1) {
         const entry: any = {};
@@ -452,7 +468,7 @@ namespace Netcode {
     }
 
     // preallocate the crypto entries so we don't have to do nil checks
-    private resetCryptoEntries() {
+    public resetCryptoEntries() {
       this.cryptoEntries = [];
       for (let i = 0; i < this.maxEntries; i += 1) {
         const entry: any = {};
@@ -461,7 +477,7 @@ namespace Netcode {
       }
     }
 
-    private clearCryptoEntry(entry: IEncryptionEntry) {
+    public clearCryptoEntry(entry: IEncryptionEntry) {
       entry.expireTime = -1;
       entry.lastAccess = -1000;
       entry.address = null;
@@ -469,17 +485,7 @@ namespace Netcode {
       entry.recvKey = new Uint8Array(KEY_BYTES);
     }
 
-    // Returns the encryption send key.
-    private getEncryptionEntrySendKey(index: number): Uint8Array {
-      return this.getEncryptionEntryKey(index, true);
-    }
-
-    // Returns the encryption recv key.
-    private getEncryptionEntryRecvKey(index: number): Uint8Array {
-      return this.getEncryptionEntryKey(index, false);
-    }
-
-    private getEncryptionEntryKey(index: number, sendKey: boolean): Uint8Array {
+    public getEncryptionEntryKey(index: number, sendKey: boolean): Uint8Array {
       if (index === -1 || index < 0 || index > this.numCryptoEntries) {
         return null;
       }
@@ -492,16 +498,6 @@ namespace Netcode {
     }
 
     // checks if last access + timeout is > or = to serverTime.
-    private serverTimedout(
-      lastAccessTimeout: number,
-      serverTime: number
-    ): boolean {
-      return (
-        lastAccessTimeout > serverTime ||
-        Utils.floatEquals(lastAccessTimeout, serverTime)
-      );
-    }
-
     public sendPayloads(payloadData: Uint8Array, serverTime: number) {
       for (let i = 0; i < this.maxClients; i += 1) {
         this.sendPayloadToInstance(i, payloadData, serverTime);
@@ -513,7 +509,7 @@ namespace Netcode {
       payloadData: Uint8Array,
       serverTime: number
     ) {
-      const instance = this.instances[index];
+      const instance = this._instances[index];
       if (instance.encryptionIndex === -1) {
         return;
       }
@@ -556,7 +552,7 @@ namespace Netcode {
     // Send keep alives to all connected clients.
     public sendKeepAlives(serverTime: number) {
       for (let i = 0; i < this.maxClients; i += 1) {
-        const instance = this.instances[i];
+        const instance = this._instances[i];
         if (!instance.connected) {
           continue;
         }
@@ -600,8 +596,8 @@ namespace Netcode {
     // Checks and disconnects any clients that have timed out.
     public checkTimeouts(serverTime: number) {
       for (let i = 0; i < this.maxClients; i += 1) {
-        const instance = this.instances[i];
-        const timeout = instance.lastRecvTime + this.timeout;
+        const instance = this._instances[i];
+        const timeout = instance.lastRecvTime + this._timeout;
 
         if (
           instance.connected &&
@@ -619,22 +615,32 @@ namespace Netcode {
         clientIndex < this.maxClients;
         clientIndex += 1
       ) {
-        const instance = this.instances[clientIndex];
+        const instance = this._instances[clientIndex];
         this.disconnectClient(instance, true, serverTime);
       }
     }
 
-    maxClients: number;
-    maxEntries: number;
-    timeout: number;
+    private serverTimedout(
+      lastAccessTimeout: number,
+      serverTime: number
+    ): boolean {
+      return (
+        lastAccessTimeout > serverTime ||
+        Utils.floatEquals(lastAccessTimeout, serverTime)
+      );
+    }
 
-    instances: ClientInstance[];
-    connectTokensEntries: IConnectTokenEntry[];
-    cryptoEntries: IEncryptionEntry[];
-    numCryptoEntries: number;
+    private maxClients: number;
+    private maxEntries: number;
+    private _timeout: number;
 
-    emptyMac: Uint8Array; // used to ensure empty mac (all empty bytes) doesn't match
-    emptyWriteKey: Uint8Array; // used to test for empty write key
+    private _instances: ClientInstance[];
+    private connectTokensEntries: IConnectTokenEntry[];
+    private cryptoEntries: IEncryptionEntry[];
+    private numCryptoEntries: number = 0;
+
+    private emptyMac: Uint8Array; // used to ensure empty mac (all empty bytes) doesn't match
+    private emptyWriteKey: Uint8Array; // used to test for empty write key
 
     clientConnectHandler: ClientConnectionHandler;
     clientDisconnectHandler: ClientConnectionHandler;

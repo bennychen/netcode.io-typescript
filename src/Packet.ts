@@ -22,7 +22,7 @@ namespace Netcode {
 
   export interface IPacket {
     getType(): PacketType;
-    sequence(): Long;
+    getSequence(): Long;
     write(
       buf: Uint8Array,
       protocolID: Long,
@@ -71,8 +71,12 @@ namespace Netcode {
       return PacketType.connectionRequest;
     }
 
-    public sequence(): Long {
+    public getSequence(): Long {
       return new Long(0, 0);
+    }
+
+    public get token(): ConnectTokenPrivate {
+      return this._token;
     }
 
     public setProperties(
@@ -207,7 +211,7 @@ namespace Netcode {
       return PacketType.connectionDenied;
     }
 
-    public sequence(): Long {
+    public getSequence(): Long {
       return this._sequence;
     }
 
@@ -266,7 +270,7 @@ namespace Netcode {
       return PacketType.connectionChallenge;
     }
 
-    public sequence(): Long {
+    public getSequence(): Long {
       return this._sequence;
     }
 
@@ -354,7 +358,7 @@ namespace Netcode {
       return PacketType.connectionResponse;
     }
 
-    public sequence(): Long {
+    public getSequence(): Long {
       return this._sequence;
     }
 
@@ -442,7 +446,7 @@ namespace Netcode {
       return PacketType.connectionKeepAlive;
     }
 
-    public sequence(): Long {
+    public getSequence(): Long {
       return this._sequence;
     }
 
@@ -530,7 +534,7 @@ namespace Netcode {
       return PacketType.connectionPayload;
     }
 
-    public sequence(): Long {
+    public getSequence(): Long {
       return this._sequence;
     }
 
@@ -610,7 +614,7 @@ namespace Netcode {
       return PacketType.connectionDisconnect;
     }
 
-    public sequence(): Long {
+    public getSequence(): Long {
       return this._sequence;
     }
 

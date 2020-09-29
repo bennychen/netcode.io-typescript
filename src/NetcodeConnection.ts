@@ -1,6 +1,6 @@
 namespace Netcode {
-  export const SOCKET_RCVBUF_SIZE = 2048 * 2048;
-  export const SOCKET_SNDBUF_SIZE = 2048 * 2048;
+  export const SOCKET_RCVBUF_SIZE = 2048 * 1024;
+  export const SOCKET_SNDBUF_SIZE = 2048 * 1024;
 
   export type NetcodeRecvHandler = (data: INetcodeData) => void;
   export type UDPConnCreator = () => IUDPConn;
@@ -48,11 +48,21 @@ namespace Netcode {
     }
 
     public setReadBuffer(bytes: number) {
-      this._recvSize = bytes;
+      if (bytes) {
+        this._recvSize = bytes;
+        if (this._conn) {
+          this._conn.setReadBuffer(this._recvSize);
+        }
+      }
     }
 
     public setWriteBuffer(bytes: number) {
-      this._sendSize = bytes;
+      if (bytes) {
+        this._sendSize = bytes;
+        if (this._conn) {
+          this._conn.setWriteBuffer(this._recvSize);
+        }
+      }
     }
 
     public dial(createUdpConn: UDPConnCreator, addr: IUDPAddr): boolean {
@@ -88,8 +98,12 @@ namespace Netcode {
     private init() {
       this._isClosed = false;
 
-      this._conn.setReadBuffer(this._recvSize);
-      this._conn.setWriteBuffer(this._sendSize);
+      if (this._recvSize) {
+        this._conn.setReadBuffer(this._recvSize);
+      }
+      if (this._sendSize) {
+        this._conn.setWriteBuffer(this._sendSize);
+      }
       this._conn.onMessage(this.onMessage.bind(this));
     }
 

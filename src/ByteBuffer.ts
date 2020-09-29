@@ -50,6 +50,10 @@ namespace Netcode {
       return this._low == other._low && this._high == other._high;
     }
 
+    public clone(): Long {
+      return new Long(this.low, this.high);
+    }
+
     public plusOne() {
       if (this._low === 0xffffffff) {
         this._low = 0;
