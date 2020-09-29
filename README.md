@@ -6,6 +6,6 @@ TypeScript/JavaScript implementation of [netcode.io](http://netcode.io).
 
 npm run-script build
 
-## Testing
+### Testing
 
 mocha tests
