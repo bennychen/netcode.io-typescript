@@ -216,7 +216,7 @@ describe('Test Packet', function () {
       replayProtection: null,
     });
     assert.equal(err === Netcode.Errors.none, true, 'oh no');
-    assert.equal(outP.sequence().equals(TEST_SEQUENCE_START), true);
+    assert.equal(outP.getSequence().equals(TEST_SEQUENCE_START), true);
   });
 
   it('test challenge packet', function () {
@@ -249,7 +249,7 @@ describe('Test Packet', function () {
       replayProtection: null,
     });
     assert.equal(err === Netcode.Errors.none, true, 'oh no');
-    assert.equal(outP.sequence().equals(TEST_SEQUENCE_START), true);
+    assert.equal(outP.getSequence().equals(TEST_SEQUENCE_START), true);
     assert.equal(
       outP.challengeTokenSequence.equals(inputPacket.challengeTokenSequence),
       true
@@ -287,7 +287,7 @@ describe('Test Packet', function () {
       replayProtection: null,
     });
     assert.equal(err === Netcode.Errors.none, true, 'oh no');
-    assert.equal(outP.sequence().equals(TEST_SEQUENCE_START), true);
+    assert.equal(outP.getSequence().equals(TEST_SEQUENCE_START), true);
     assert.equal(
       outP.challengeTokenSequence.equals(inputPacket.challengeTokenSequence),
       true
@@ -322,7 +322,7 @@ describe('Test Packet', function () {
       replayProtection: null,
     });
     assert.equal(err === Netcode.Errors.none, true, 'oh no');
-    assert.equal(outP.sequence().equals(TEST_SEQUENCE_START), true);
+    assert.equal(outP.getSequence().equals(TEST_SEQUENCE_START), true);
     assert.equal(outP.clientIndex, inputPacket.clientIndex);
     assert.equal(outP.maxClients, inputPacket.maxClients);
   });
@@ -354,7 +354,7 @@ describe('Test Packet', function () {
       replayProtection: null,
     });
     assert.equal(err === Netcode.Errors.none, true, Netcode.Errors[err]);
-    assert.equal(outP.sequence().equals(TEST_SEQUENCE_START), true);
+    assert.equal(outP.getSequence().equals(TEST_SEQUENCE_START), true);
     assertBytesEqual(outP.payloadData, inputPacket.payloadData, 'oh no');
   });
 
@@ -378,7 +378,7 @@ describe('Test Packet', function () {
       replayProtection: null,
     });
     assert.equal(err === Netcode.Errors.none, true, 'oh no');
-    assert.equal(outP.sequence().equals(TEST_SEQUENCE_START), true);
+    assert.equal(outP.getSequence().equals(TEST_SEQUENCE_START), true);
   });
 });
 
