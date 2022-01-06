@@ -1,6 +1,6 @@
 # netcode.io-typescript
 
-TypeScript/JavaScript implementation of [netcode.io](http://netcode.io).
+TypeScript/JavaScript implementation of [netcode.io](https://github.com/networkprotocol/netcode).
 
 ### Why TypeScript/JavaScript version of netcode?
 
