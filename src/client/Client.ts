@@ -72,9 +72,8 @@ namespace Netcode {
       ) {
         return Errors.exceededServerNumber;
       }
-      this._serverAddr = this._connectToken.sharedTokenData.serverAddrs[
-        this._serverIndex
-      ];
+      this._serverAddr =
+        this._connectToken.sharedTokenData.serverAddrs[this._serverIndex];
 
       this._conn = new NetcodeConn();
       this._conn.setRecvHandler(this.handleNetcodeData.bind(this));
@@ -228,9 +227,8 @@ namespace Netcode {
       }
 
       this._serverIndex++;
-      this._serverAddr = this._connectToken.sharedTokenData.serverAddrs[
-        this._serverIndex
-      ];
+      this._serverAddr =
+        this._connectToken.sharedTokenData.serverAddrs[this._serverIndex];
 
       this.reset();
 
@@ -326,7 +324,12 @@ namespace Netcode {
       if (err === Errors.none) {
         this.processPacket(packet);
       } else {
-        console.error(err);
+        console.error(
+          'process packet ' +
+            Netcode.PacketType[packet.getType()] +
+            ' err: ' +
+            Netcode.Errors[err]
+        );
       }
     }
 
@@ -369,9 +372,9 @@ namespace Netcode {
             return;
           }
           this.debugLog(
-            `client ${
-              this._id
-            } got payload packet from server ${(packet as PayloadPacket)
+            `client ${this._id} got payload packet from server ${(
+              packet as PayloadPacket
+            )
               .getSequence()
               .toNumber()}`
           );
