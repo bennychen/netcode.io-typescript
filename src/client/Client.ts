@@ -20,8 +20,14 @@ namespace Netcode {
     readPacketKey: Uint8Array;
   }
 
+  export type PacketErrorHandler = (
+    err: Errors,
+    packetType: PacketType
+  ) => void;
+
   export class Client {
     public debug: boolean = false;
+    public onPacketError: PacketErrorHandler;
 
     public get id(): Long {
       return this._id;
@@ -47,6 +53,7 @@ namespace Netcode {
     }
 
     public constructor(token: ConnectToken) {
+      this.onPacketError = this.printPacketError.bind(this);
       this._connectToken = token;
       this._lastPacketRecvTime = -0.001;
       this._lastPacketSendTime = -0.001;
@@ -323,13 +330,8 @@ namespace Netcode {
       });
       if (err === Errors.none) {
         this.processPacket(packet);
-      } else {
-        console.error(
-          'process packet ' +
-            Netcode.PacketType[packet.getType()] +
-            ' err: ' +
-            Netcode.Errors[err]
-        );
+      } else if (this.onPacketError) {
+        this.onPacketError(err, packet.getType());
       }
     }
 
@@ -394,6 +396,15 @@ namespace Netcode {
           return;
       }
       this._lastPacketRecvTime = this._time;
+    }
+
+    private printPacketError(err: Errors, packetType: PacketType) {
+      console.error(
+        'process packet ' +
+          Netcode.PacketType[packetType] +
+          ' err: ' +
+          Netcode.Errors[err]
+      );
     }
 
     private resetConectionData(newState: ClientState) {
