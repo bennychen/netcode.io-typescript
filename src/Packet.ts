@@ -787,13 +787,16 @@ namespace Netcode {
         encryptedBuff.subarray(0, encryptedBuff.length - MAC_BYTES),
         additionalData,
         encryptedBuff.subarray(encryptedBuff.length - MAC_BYTES)
-      );
+      ) as Uint8Array;
       if (!decrypted) {
         return { err: Errors.errDecryptData };
       }
+      packetBuffer.bytes.set(decrypted, 0);
       return {
         sequence: packetSequence,
-        decrypted: new ByteBuffer(decrypted as Uint8Array),
+        decrypted: new ByteBuffer(
+          packetBuffer.bytes.subarray(0, decrypted.length)
+        ),
         err: Errors.none,
       };
     }

@@ -391,12 +391,24 @@ function aead_mac(polykey, data, ciphertext) {
   return poly1305_auth(m, m.length, polykey);
 }
 
+var g_tempBuf;
+var g_textBuf;
+var g_polyKeyBuf;
 this.aead_encrypt = function (key, nonce, plaintext, data) {
-  var plen = plaintext.length,
-    buf = new Uint8Array(plen),
-    ciphertext = new Uint8Array(plen),
-    polykey = new Uint8Array(64),
-    ctx = new Chacha20(key, nonce, 0);
+  if (!g_tempBuf) {
+    g_tempBuf = new Uint8Array(2048);
+  }
+  if (!g_textBuf) {
+    g_textBuf = new Uint8Array(2048);
+  }
+  if (!g_polyKeyBuf) {
+    g_polyKeyBuf = new Uint8Array(64);
+  }
+  var plen = plaintext.length;
+  var buf = g_tempBuf.subarray(0, plen);
+  var ciphertext = g_textBuf.subarray(0, plen);
+  var polykey = g_polyKeyBuf;
+  var ctx = new Chacha20(key, nonce, 0);
 
   ctx.keystream(polykey, 64);
 
@@ -410,11 +422,20 @@ this.aead_encrypt = function (key, nonce, plaintext, data) {
 };
 
 this.aead_decrypt = function (key, nonce, ciphertext, data, mac) {
-  var plen = ciphertext.length,
-    buf = new Uint8Array(plen),
-    plaintext = new Uint8Array(plen),
-    polykey = new Uint8Array(64),
-    ctx = new Chacha20(key, nonce, 0);
+  if (!g_tempBuf) {
+    g_tempBuf = new Uint8Array(2048);
+  }
+  if (!g_textBuf) {
+    g_textBuf = new Uint8Array(2048);
+  }
+  if (!g_polyKeyBuf) {
+    g_polyKeyBuf = new Uint8Array(64);
+  }
+  var plen = ciphertext.length;
+  var buf = g_tempBuf.subarray(0, plen);
+  var plaintext = g_textBuf.subarray(0, plen);
+  var polykey = g_polyKeyBuf;
+  var ctx = new Chacha20(key, nonce, 0);
 
   ctx.keystream(polykey, 64);
 
@@ -427,25 +448,25 @@ this.aead_decrypt = function (key, nonce, ciphertext, data, mac) {
   for (var i = 0; i < plen; i++) {
     plaintext[i] = buf[i] ^ ciphertext[i];
   }
-
   return plaintext;
 };
 
-this.getRandomBytes = (typeof self !== 'undefined' &&
-  (self.crypto || self.msCrypto)
-  ? function () {
-      // Browsers
-      var crypto = self.crypto || self.msCrypto,
-        QUOTA = 65536;
-      return function (n) {
-        var a = new Uint8Array(n);
-        for (var i = 0; i < n; i += QUOTA) {
-          crypto.getRandomValues(a.subarray(i, i + Math.min(n - i, QUOTA)));
-        }
-        return a;
-      };
-    }
-  : function () {
-      // Node
-      return require('crypto').randomBytes;
-    })();
+this.getRandomBytes = (
+  typeof self !== 'undefined' && (self.crypto || self.msCrypto)
+    ? function () {
+        // Browsers
+        var crypto = self.crypto || self.msCrypto,
+          QUOTA = 65536;
+        return function (n) {
+          var a = new Uint8Array(n);
+          for (var i = 0; i < n; i += QUOTA) {
+            crypto.getRandomValues(a.subarray(i, i + Math.min(n - i, QUOTA)));
+          }
+          return a;
+        };
+      }
+    : function () {
+        // Node
+        return require('crypto').randomBytes;
+      }
+)();

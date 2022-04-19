@@ -260,9 +260,9 @@ namespace Netcode {
         ),
         additionalData.bytes,
         this.mac
-      );
+      ) as Uint8Array;
       if (decrypted) {
-        this.tokenData = new ByteBuffer(decrypted as Uint8Array);
+        this.tokenData = new ByteBuffer(decrypted.slice());
       } else {
         console.error('decrypted connect private token failed');
         return;
@@ -315,8 +315,10 @@ namespace Netcode {
         userData
       );
       this.privateData.generate();
-      this.sharedTokenData.clientKey = this.privateData.sharedTokenData.clientKey;
-      this.sharedTokenData.serverKey = this.privateData.sharedTokenData.serverKey;
+      this.sharedTokenData.clientKey =
+        this.privateData.sharedTokenData.clientKey;
+      this.sharedTokenData.serverKey =
+        this.privateData.sharedTokenData.serverKey;
       this.sharedTokenData.serverAddrs = serverAddrs;
       if (this.privateData.write() === undefined) {
         return false;
@@ -435,9 +437,9 @@ namespace Netcode {
         tokenBuffer.subarray(0, CHALLENGE_TOKEN_BYTES - MAC_BYTES),
         [],
         tokenBuffer.subarray(CHALLENGE_TOKEN_BYTES - MAC_BYTES)
-      );
+      ) as Uint8Array;
       if (decrypted) {
-        return decrypted as Uint8Array;
+        return decrypted.slice();
       }
     }
 
