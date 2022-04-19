@@ -68,6 +68,7 @@ namespace Netcode {
       this._allowedPackets[PacketType.connectionKeepAlive] = 1;
       this._allowedPackets[PacketType.connectionPayload] = 1;
       this._allowedPackets[PacketType.connectionDisconnect] = 1;
+      this._tempBuffer = new Uint8Array(MAX_PACKET_BYTES);
     }
 
     public connect(dial: UDPConnCreator): Errors {
@@ -293,7 +294,7 @@ namespace Netcode {
     }
 
     private sendPacket(packet: IPacket): boolean {
-      const buffer = new Uint8Array(MAX_PACKET_BYTES);
+      const buffer = this._tempBuffer;
       const bytesCount = packet.write(
         buffer,
         this._connectToken.protocolID,
@@ -450,6 +451,7 @@ namespace Netcode {
     private _allowedPackets: Uint8Array;
     private _payloadPacketQueue: Queue<IPacket>;
     private _receivedPackets: INetcodeData[] = [];
+    private _tempBuffer: Uint8Array;
 
     private _state: ClientState;
     private _replayProtection: ReplayProtection;

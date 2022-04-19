@@ -36,6 +36,8 @@ namespace Netcode {
       this.serverConn.setReadBuffer(SOCKET_RCVBUF_SIZE * this.maxClients);
       this.serverConn.setWriteBuffer(SOCKET_SNDBUF_SIZE * this.maxClients);
       this.serverConn.setRecvHandler(this.handleNetcodeData);
+
+      this._tempBuffer = new Uint8Array(MAX_PACKET_BYTES);
     }
 
     public setClientConnectHandler(handler: ClientConnectionHandler) {
@@ -151,12 +153,12 @@ namespace Netcode {
       this.serverConn.close();
     }
 
-    public recvPayload(
-      clientIndex: number
-    ): { data: Uint8Array; sequance: Long } {
-      const packet = this.clientManager.instances[
-        clientIndex
-      ].packetQueue.pop();
+    public recvPayload(clientIndex: number): {
+      data: Uint8Array;
+      sequance: Long;
+    } {
+      const packet =
+        this.clientManager.instances[clientIndex].packetQueue.pop();
       if (!packet) {
         return null;
       }
@@ -189,18 +191,16 @@ namespace Netcode {
       let encryptionIndex = -1;
       const clientIndex = this.clientManager.findClientIndexByAddress(addr);
       if (clientIndex != -1) {
-        encryptionIndex = this.clientManager.findEncryptionIndexByClientIndex(
-          clientIndex
-        );
+        encryptionIndex =
+          this.clientManager.findEncryptionIndexByClientIndex(clientIndex);
       } else {
         encryptionIndex = this.clientManager.findEncryptionEntryIndex(
           addr,
           this.serverTime
         );
       }
-      const readPacketKey = this.clientManager.getEncryptionEntryRecvKey(
-        encryptionIndex
-      );
+      const readPacketKey =
+        this.clientManager.getEncryptionEntryRecvKey(encryptionIndex);
 
       const timestamp = Date.now();
 
@@ -398,7 +398,7 @@ namespace Netcode {
       const challengePacket = new ChallengePacket();
       challengePacket.setProperties(challengeSequence, challengeBuf);
 
-      const buffer = new Uint8Array(MAX_PACKET_BYTES);
+      const buffer = this._tempBuffer;
       const bytesWritten = challengePacket.write(
         buffer,
         this.protocolId,
@@ -418,7 +418,7 @@ namespace Netcode {
 
     private sendDeniedPacket(sendKey: Uint8Array, addr: IUDPAddr) {
       const deniedPacket = new DeniedPacket();
-      const packetBuffer = new Uint8Array(MAX_PACKET_BYTES);
+      const packetBuffer = this._tempBuffer;
       const bytesWritten = deniedPacket.write(
         packetBuffer,
         this.protocolId,
@@ -453,9 +453,8 @@ namespace Netcode {
         console.log('failed to read challenge token: %s', Errors[err]);
         return;
       }
-      const sendKey = this.clientManager.getEncryptionEntrySendKey(
-        encryptionIndex
-      );
+      const sendKey =
+        this.clientManager.getEncryptionEntrySendKey(encryptionIndex);
       if (!sendKey) {
         console.log('server ignored connection response. no packet send key');
         return;
@@ -566,5 +565,6 @@ namespace Netcode {
     private recvByte: number;
 
     private packets: INetcodeData[] = [];
+    private _tempBuffer: Uint8Array;
   }
 }
